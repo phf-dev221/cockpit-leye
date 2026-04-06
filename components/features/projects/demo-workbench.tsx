@@ -30,6 +30,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CoreSetupCard } from "@/features/projects/components/core-setup-card";
+import { EmptyProjectState } from "@/features/projects/components/empty-project-state";
 import { LazyDeskCard } from "@/features/projects/components/lazy-desk-card";
 import { ProjectSidebar } from "@/features/projects/components/project-sidebar";
 import { QuickTasksCard } from "@/features/projects/components/quick-tasks-card";
@@ -129,6 +130,7 @@ export function DemoWorkbench({
     projects,
     activeProjectId,
     activeProject,
+    error,
     setActiveProject,
     updateFounderNote,
     updateStepValue,
@@ -156,7 +158,7 @@ export function DemoWorkbench({
     removeSprintTask,
     updateBusinessField,
     advanceDay,
-    resetDemo
+    refreshWorkspace
   } = useProjectWorkspace();
 
   const lazyMode = useUiStore((state) => state.lazyMode);
@@ -164,6 +166,14 @@ export function DemoWorkbench({
   const selectedSectionId = useUiStore((state) => state.selectedSectionId);
   const setSelectedSectionId = useUiStore((state) => state.setSelectedSectionId);
   const setWorkspaceView = useUiStore((state) => state.setWorkspaceView);
+
+  if (!activeProject) {
+    return (
+      <EmptyProjectState
+        description={error ?? "The frontend is ready for backend data, but no project has been returned by the API yet."}
+      />
+    );
+  }
 
   const currentStep = getCurrentStep(activeProject);
   const nextStep = getNextStep(activeProject);
@@ -411,6 +421,7 @@ export function DemoWorkbench({
     <div className="space-y-4 py-1">
       {toast ? <div className="fixed right-4 top-4 z-50 rounded-2xl bg-ink px-4 py-3 text-sm text-surface shadow-panel">{toast}</div> : null}
       {notice ? <div className="rounded-2xl border border-ember/25 bg-ember/10 px-4 py-3 text-sm text-ink">{notice}</div> : null}
+      {error ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> : null}
 
       <section className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
         <ProjectSidebar
@@ -421,9 +432,9 @@ export function DemoWorkbench({
             const selectedProject = projects.find((project) => project.id === projectId);
             pulse(`Opened ${selectedProject?.name ?? "the project"}.`);
           }}
-          onResetDemo={() => {
-            resetDemo();
-            pulse("Reset the workspace.");
+          onRefreshWorkspace={() => {
+            void refreshWorkspace();
+            pulse("Refreshed workspace data.");
           }}
           getCompletion={getCompletion}
         />
@@ -457,9 +468,9 @@ export function DemoWorkbench({
                   <MessageSquarePlus className="mr-2 h-4 w-4" />
                   Simulate founder call
                 </Button>
-                <Button variant="ghost" onClick={() => { activeProject.steps.forEach((step) => updateStepValue(step.id, samples[step.id])); addDecision("The full story is now demo-ready."); pulse(`Filled the story for ${activeProject.name}.`); }}>
+                <Button variant="ghost" onClick={() => { activeProject.steps.forEach((step) => updateStepValue(step.id, samples[step.id])); addDecision("The core story is now ready to review."); pulse(`Filled the story for ${activeProject.name}.`); }}>
                   <Flame className="mr-2 h-4 w-4" />
-                  Make it demo-ready
+                  Fill suggested answers
                 </Button>
               </div>
             </div>
@@ -1277,7 +1288,7 @@ export function DemoWorkbench({
                 </Button>
               </div>
               <div className="space-y-2">
-                {activeProject.decisions.length > 0 ? activeProject.decisions.map((decision) => <div key={decision} className="rounded-3xl bg-surface/80 p-4 text-sm leading-6 text-ink/78">{decision}</div>) : <div className="rounded-3xl bg-surface/70 p-4 text-sm text-ink/58">No decisions yet. Add one to make the demo feel alive.</div>}
+                {activeProject.decisions.length > 0 ? activeProject.decisions.map((decision) => <div key={decision} className="rounded-3xl bg-surface/80 p-4 text-sm leading-6 text-ink/78">{decision}</div>) : <div className="rounded-3xl bg-surface/70 p-4 text-sm text-ink/58">No decisions yet. Add one to keep the project history clear.</div>}
               </div>
             </Card>
           )}

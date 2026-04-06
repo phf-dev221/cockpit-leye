@@ -1,7 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 
-export const DEFAULT_PROJECT_ID = "teranga-power";
-
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
@@ -12,4 +10,12 @@ export function formatDaysLabel(days: number) {
 
 export function slugifyProjectName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "new-project";
+}
+
+export function getProjectRoute(projectId?: string | null, suffix = "") {
+  if (!projectId) {
+    return "/projects/new";
+  }
+
+  return `/projects/${projectId}${suffix}`;
 }

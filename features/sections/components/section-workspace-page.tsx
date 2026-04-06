@@ -7,12 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SectionContainer } from "@/components/ui/section-container";
 import { Textarea } from "@/components/ui/textarea";
-import { conversationService } from "@/features/conversations/services/conversation-service";
-import { fileUploadService } from "@/features/files/services/file-upload-service";
+import { EmptyProjectState } from "@/features/projects/components/empty-project-state";
 import { useProjectWorkspace } from "@/features/projects/hooks/use-project-workspace";
 import { useSyncProjectRoute } from "@/features/projects/hooks/use-sync-project-route";
-import { sectionService } from "@/features/sections/services/section-service";
-import { sprintService } from "@/features/sprints/services/sprint-service";
 import { useUiStore } from "@/store/ui-store";
 
 const sprintColumns = ["To Do", "In Progress", "Done"] as const;
@@ -47,17 +44,19 @@ export function SectionWorkspacePage({ projectId }: { projectId: string }) {
   const [sprintTaskDraft, setSprintTaskDraft] = useState("");
   const [draggedSprintTaskId, setDraggedSprintTaskId] = useState<string | null>(null);
 
-  const sections = sectionService.list(activeProject);
+  if (!activeProject) {
+    return <EmptyProjectState />;
+  }
+
+  const sections = activeProject.canvases;
   const selectedSection = sections.find((section) => section.id === selectedSectionId) ?? sections[0];
   const conversations = useMemo(
     () =>
-      conversationService
-        .list(activeProject)
-        .filter(
-          (conversation) =>
-            conversation.context.toLowerCase().includes(selectedSection.title.toLowerCase()) ||
-            conversation.context.toLowerCase().includes(selectedSection.id.toLowerCase())
-        ),
+      activeProject.conversations.filter(
+        (conversation) =>
+          conversation.context.toLowerCase().includes(selectedSection.title.toLowerCase()) ||
+          conversation.context.toLowerCase().includes(selectedSection.id.toLowerCase())
+      ),
     [activeProject, selectedSection.id, selectedSection.title]
   );
   const files = useMemo(
@@ -69,7 +68,7 @@ export function SectionWorkspacePage({ projectId }: { projectId: string }) {
       ),
     [activeProject.files, selectedSection.id, selectedSection.title]
   );
-  const sprint = sprintService.get(activeProject);
+  const sprint = activeProject.sprint;
 
   return (
     <div className="space-y-5">
@@ -152,10 +151,6 @@ export function SectionWorkspacePage({ projectId }: { projectId: string }) {
                     <Button
                       onClick={async () => {
                         if (!fileDraft.name.trim()) return;
-                        await fileUploadService.createPlaceholderUpload({
-                          fileName: fileDraft.name.trim(),
-                          target: selectedSection.title
-                        });
                         addFileRecord(fileDraft.name.trim(), selectedSection.title, fileDraft.url.trim());
                         setFileDraft({ name: "", url: "" });
                       }}

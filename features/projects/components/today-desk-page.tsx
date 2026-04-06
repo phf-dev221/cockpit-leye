@@ -7,16 +7,22 @@ import { Bell, CalendarDays, FolderPlus, Plus, Rocket, TimerReset, Trash2 } from
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SectionContainer } from "@/components/ui/section-container";
+import { EmptyProjectState } from "@/features/projects/components/empty-project-state";
 import { useProjectWorkspace } from "@/features/projects/hooks/use-project-workspace";
 import { useSyncProjectRoute } from "@/features/projects/hooks/use-sync-project-route";
+import { getProjectRoute } from "@/lib/utils";
 
-function getNextStep(project: ReturnType<typeof useProjectWorkspace>["activeProject"]) {
+function getNextStep(project: NonNullable<ReturnType<typeof useProjectWorkspace>["activeProject"]>) {
   return project.steps.find((step) => !step.value.trim()) ?? project.steps[0];
 }
 
 export function TodayDeskPage({ projectId }: { projectId: string }) {
   useSyncProjectRoute(projectId);
   const { activeProject, advanceDay, addFocusItem, removeFocusItem, updateFocusItem } = useProjectWorkspace();
+  if (!activeProject) {
+    return <EmptyProjectState />;
+  }
+
   const nextStep = getNextStep(activeProject);
   const unreadNotifications = activeProject.notifications.filter((notification) => !notification.read).length;
   const openReminders = activeProject.reminders.filter((reminder) => !reminder.done).length;
@@ -47,7 +53,7 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
                 Simulate one more day
               </Button>
               <Link
-                href={`/projects/${activeProject.id}/sections`}
+                href={getProjectRoute(activeProject.id, "/sections")}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-slate-900"
               >
                 <Rocket className="h-4 w-4 text-white" />
@@ -113,7 +119,7 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
                 </div>
               </div>
             </Link>
-            <Link href={`/projects/${activeProject.id}/sections`} className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-5 text-slate-950 transition hover:bg-white">
+            <Link href={getProjectRoute(activeProject.id, "/sections")} className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-5 text-slate-950 transition hover:bg-white">
               <div className="flex items-center gap-3">
                 <Rocket className="h-5 w-5 text-primary" />
                 <div>
@@ -122,7 +128,7 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
                 </div>
               </div>
             </Link>
-            <Link href={`/projects/${activeProject.id}/notifications`} className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-5 text-slate-950 transition hover:bg-white">
+            <Link href={getProjectRoute(activeProject.id, "/notifications")} className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-5 text-slate-950 transition hover:bg-white">
               <div className="flex items-center gap-3">
                 <Bell className="h-5 w-5 text-primary" />
                 <div>
@@ -131,7 +137,7 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
                 </div>
               </div>
             </Link>
-            <Link href={`/projects/${activeProject.id}/sprints`} className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-5 text-slate-950 transition hover:bg-white">
+            <Link href={getProjectRoute(activeProject.id, "/sprints")} className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-5 text-slate-950 transition hover:bg-white">
               <div className="flex items-center gap-3">
                 <CalendarDays className="h-5 w-5 text-primary" />
                 <div>

@@ -6,13 +6,14 @@ import { FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SectionContainer } from "@/components/ui/section-container";
+import { getProjectRoute } from "@/lib/utils";
 import type { DemoProject } from "@/types";
 
 interface ProjectSidebarProps {
   projects: DemoProject[];
   activeProjectId: string;
   onSelectProject: (projectId: string) => void;
-  onResetDemo: () => void;
+  onRefreshWorkspace: () => void;
   getCompletion: (project: DemoProject) => number;
 }
 
@@ -20,7 +21,7 @@ export function ProjectSidebar({
   projects,
   activeProjectId,
   onSelectProject,
-  onResetDemo,
+  onRefreshWorkspace,
   getCompletion
 }: ProjectSidebarProps) {
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
@@ -32,17 +33,13 @@ export function ProjectSidebar({
           <p className="text-xs uppercase tracking-[0.2em] text-ink/45">Projects</p>
           <h2 className="mt-2 text-xl font-semibold">Switch fast</h2>
         </div>
-        <button
-          type="button"
-          onClick={onResetDemo}
-          className="text-xs text-ink/55 underline underline-offset-4"
-        >
-          Reset
+        <button type="button" onClick={onRefreshWorkspace} className="text-xs text-ink/55 underline underline-offset-4">
+          Refresh
         </button>
       </div>
 
       <div className="space-y-2">
-        {projects.map((project) => (
+        {projects.length > 0 ? projects.map((project) => (
           <button
             key={project.id}
             type="button"
@@ -59,7 +56,11 @@ export function ProjectSidebar({
             </div>
             <p className="mt-1 text-xs opacity-70">{project.stageLabel}</p>
           </button>
-        ))}
+        )) : (
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-surface/60 px-4 py-5 text-sm text-ink/60">
+            No project loaded from the backend yet.
+          </div>
+        )}
       </div>
 
       <SectionContainer
@@ -84,7 +85,7 @@ export function ProjectSidebar({
         className="bg-surface/80"
       >
         <Link
-          href={`/projects/${activeProject.id}/manage`}
+          href={getProjectRoute(activeProject?.id, "/manage")}
           className="inline-flex w-full items-center justify-between gap-2 rounded-full bg-muted px-4 py-2.5 text-sm font-medium text-ink transition-transform duration-200 hover:-translate-y-0.5"
         >
           Open settings

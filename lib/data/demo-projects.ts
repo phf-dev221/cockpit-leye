@@ -52,7 +52,7 @@ const stepBlueprints: Array<Omit<DemoStep, "value" | "status">> = [
     description: "Describe the simplest path from pain to relief.",
     prompt: "What is the lightest useful version of the solution?",
     placeholder: "A lightweight workspace that helps...",
-    helper: "Keep it simple enough to demo fast."
+    helper: "Keep it simple enough to validate fast."
   },
   {
     id: "business-opportunity",
@@ -103,7 +103,7 @@ export function buildWarning(project: DemoProject) {
     return `You are in ${project.steps.find((step) => step.id === project.currentStepId)?.title}. Push one concrete answer forward.`;
   }
 
-  return "The core narrative is ready. Turn this into a decision, a sprint, or a live demo.";
+  return "The core narrative is ready. Turn this into a decision, a sprint, or a review.";
 }
 
 export function buildStageLabel(project: DemoProject) {
@@ -121,7 +121,7 @@ export function buildStageLabel(project: DemoProject) {
     return "Solution Mapping";
   }
 
-  return "Demo Ready";
+  return "Ready";
 }
 
 function defaultTasks(): DemoTask[] {
@@ -379,7 +379,5 @@ export function createDemoProject(
   return project;
 }
 
-export const seededDemoProjects: DemoProject[] = [
-  createDemoProject("Teranga Cockpit")
-];
+export const seededDemoProjects: DemoProject[] = [];
 

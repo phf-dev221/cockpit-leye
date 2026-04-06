@@ -12,10 +12,11 @@ Frontend cockpit for tracking product execution, deadlines, go-to-market, viabil
 
 The next step is to replace local demo storage with a scalable backend connected to:
 
+- Laravel 12 for the application backend
 - PostgreSQL for persistent product and business data
 - Google Calendar for time-blocking and delivery capacity
 - Cloudinary for asset and file management
-- Auth and role-based access for future multi-user support
+- Auth, workspace-based access, and co-founder collaboration with encapsulated project data
 
 ## Local run
 

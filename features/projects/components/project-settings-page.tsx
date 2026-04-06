@@ -7,17 +7,22 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SectionContainer } from "@/components/ui/section-container";
+import { EmptyProjectState } from "@/features/projects/components/empty-project-state";
 import { useProjectWorkspace } from "@/features/projects/hooks/use-project-workspace";
-import { DEFAULT_PROJECT_ID } from "@/lib/utils";
+import { getProjectRoute } from "@/lib/utils";
 
 export function ProjectSettingsPage() {
   const router = useRouter();
   const { activeProject, projects, renameProject, deleteProject } = useProjectWorkspace();
-  const [nameDraft, setNameDraft] = useState(activeProject.name);
+  const [nameDraft, setNameDraft] = useState(activeProject?.name ?? "");
 
   useEffect(() => {
-    setNameDraft(activeProject.name);
-  }, [activeProject.id, activeProject.name]);
+    setNameDraft(activeProject?.name ?? "");
+  }, [activeProject?.id, activeProject?.name]);
+
+  if (!activeProject) {
+    return <EmptyProjectState title="No project selected." description="Create a project from the backend workspace before opening settings." />;
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -30,7 +35,7 @@ export function ProjectSettingsPage() {
           </p>
         </div>
         <Link
-          href={`/projects/${activeProject.id}`}
+          href={getProjectRoute(activeProject.id)}
           className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white/60 px-4 py-2.5 text-sm font-medium text-ink transition-transform duration-200 hover:-translate-y-0.5"
         >
           Back to desk
@@ -71,8 +76,9 @@ export function ProjectSettingsPage() {
             disabled={projects.length <= 1}
             onClick={() => {
               const currentId = activeProject.id;
-              deleteProject(currentId);
-              router.push(`/projects/${DEFAULT_PROJECT_ID}`);
+              void deleteProject(currentId).then(() => {
+                router.push(getProjectRoute());
+              });
             }}
           >
             Delete project

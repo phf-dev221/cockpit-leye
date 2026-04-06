@@ -7,7 +7,7 @@ import { Bell, Clock3, FolderKanban, Gauge, MessageSquareText, Rocket } from "lu
 
 import { Card } from "@/components/ui/card";
 import { useProjectWorkspace } from "@/features/projects/hooks/use-project-workspace";
-import { DEFAULT_PROJECT_ID } from "@/lib/utils";
+import { getProjectRoute } from "@/lib/utils";
 import { useUiStore } from "@/store/ui-store";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -15,14 +15,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const lazyMode = useUiStore((state) => state.lazyMode);
   const toggleLazyMode = useUiStore((state) => state.toggleLazyMode);
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
-  const projectId = activeProject?.id ?? DEFAULT_PROJECT_ID;
+  const projectId = activeProject?.id ?? null;
   const navItems = [
-    { href: `/projects/${projectId}`, label: "Today", icon: Gauge },
-    { href: `/projects/${projectId}/sections`, label: "Workspace", icon: FolderKanban },
-    { href: `/projects/${projectId}/sprints`, label: "Sprint", icon: Rocket },
-    { href: `/projects/${projectId}/notifications`, label: "Alerts", icon: Bell },
-    { href: `/projects/${projectId}`, label: "Notes", icon: MessageSquareText },
-    { href: `/projects/${projectId}`, label: "TTM", icon: Clock3 }
+    { href: getProjectRoute(projectId), label: "Today", icon: Gauge },
+    { href: getProjectRoute(projectId, "/sections"), label: "Workspace", icon: FolderKanban },
+    { href: getProjectRoute(projectId, "/sprints"), label: "Sprint", icon: Rocket },
+    { href: getProjectRoute(projectId, "/notifications"), label: "Alerts", icon: Bell },
+    { href: getProjectRoute(projectId), label: "Notes", icon: MessageSquareText },
+    { href: getProjectRoute(projectId), label: "TTM", icon: Clock3 }
   ] satisfies Array<{ href: string; label: string; icon: ComponentType<{ className?: string }> }>;
 
   return (

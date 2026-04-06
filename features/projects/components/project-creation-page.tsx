@@ -10,7 +10,7 @@ import {
   ProjectCreationWizard
 } from "@/features/projects/components/project-creation-wizard";
 import { useProjectWorkspace } from "@/features/projects/hooks/use-project-workspace";
-import { DEFAULT_PROJECT_ID, slugifyProjectName } from "@/lib/utils";
+import { getProjectRoute, slugifyProjectName } from "@/lib/utils";
 
 export function ProjectCreationPage() {
   const router = useRouter();
@@ -28,7 +28,7 @@ export function ProjectCreationPage() {
           </p>
         </div>
         <Link
-          href={`/projects/${DEFAULT_PROJECT_ID}`}
+          href={getProjectRoute()}
           className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-950 transition-transform duration-200 hover:-translate-y-0.5"
         >
           Back to desk
@@ -39,8 +39,10 @@ export function ProjectCreationPage() {
         value={draft}
         onChange={setDraft}
         onSubmit={(seed) => {
-          createProject(draft.name.trim(), seed);
-          router.push(`/projects/${slugifyProjectName(draft.name)}/sections`);
+          void createProject(draft.name.trim(), seed).then((nextSnapshot) => {
+            const createdProject = nextSnapshot.projects[0];
+            router.push(getProjectRoute(createdProject?.id ?? slugifyProjectName(draft.name), "/sections"));
+          });
         }}
         onCancel={() => router.back()}
       />
