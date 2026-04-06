@@ -6,10 +6,12 @@ import { Card } from "@/components/ui/card";
 
 export function EmptyProjectState({
   title = "No project connected yet.",
-  description = "Connect the frontend to the backend and create a workspace project to start using the cockpit."
+  description = "Connect the frontend to the backend and create a workspace project to start using the cockpit.",
+  showLogin = true
 }: {
   title?: string;
   description?: string;
+  showLogin?: boolean;
 }) {
   return (
     <Card className="space-y-4 bg-white text-slate-950">
@@ -20,6 +22,14 @@ export function EmptyProjectState({
       </div>
 
       <div className="flex flex-wrap gap-3">
+        {showLogin ? (
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-slate-50"
+          >
+            Login
+          </Link>
+        ) : null}
         <Link
           href="/projects/new"
           className="inline-flex items-center justify-center rounded-full bg-slate-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-900"

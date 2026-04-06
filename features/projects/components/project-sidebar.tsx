@@ -6,6 +6,7 @@ import { FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SectionContainer } from "@/components/ui/section-container";
+import { useWorkspaces } from "@/features/workspaces/hooks/use-workspaces";
 import { getProjectRoute } from "@/lib/utils";
 import type { DemoProject } from "@/types";
 
@@ -25,9 +26,51 @@ export function ProjectSidebar({
   getCompletion
 }: ProjectSidebarProps) {
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
+  const {
+    workspaces,
+    activeWorkspaceId,
+    activateWorkspace,
+    isLoading: isLoadingWorkspaces
+  } = useWorkspaces();
 
   return (
     <Card className="space-y-4">
+      <div className="space-y-2">
+        <p className="text-xs uppercase tracking-[0.2em] text-ink/45">Workspace</p>
+        <div className="space-y-2">
+          {workspaces.length > 0 ? (
+            workspaces.map((workspace) => (
+              <button
+                key={workspace.id}
+                type="button"
+                onClick={() => {
+                  void activateWorkspace(workspace.id.toString()).then((result) => {
+                    if (result) {
+                      onRefreshWorkspace();
+                    }
+                  });
+                }}
+                className={`w-full rounded-3xl border px-4 py-3 text-left transition ${
+                  workspace.id.toString() === activeWorkspaceId
+                    ? "border-slate-950 bg-slate-950 text-white"
+                    : "border-transparent bg-surface/80 text-ink hover:bg-white"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium">{workspace.name}</p>
+                  <span className="text-[11px] uppercase tracking-[0.16em] opacity-65">{workspace.status}</span>
+                </div>
+                <p className="mt-1 text-xs opacity-70">{workspace.slug}</p>
+              </button>
+            ))
+          ) : (
+            <div className="rounded-3xl border border-dashed border-slate-300 bg-surface/60 px-4 py-4 text-sm text-ink/60">
+              {isLoadingWorkspaces ? "Loading workspaces..." : "No workspace available yet."}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-ink/45">Projects</p>

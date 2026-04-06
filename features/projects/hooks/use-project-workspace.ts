@@ -1,12 +1,72 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { projectService, type CreateProjectPayload, type ProjectSnapshot } from "@/features/projects/services/project-service";
 import type { DemoBusinessSnapshot, DemoProject } from "@/types";
 
 type ProjectMutation<TArgs extends unknown[] = []> = (...args: TArgs) => Promise<ProjectSnapshot>;
+
+interface ProjectWorkspaceContextValue {
+  projects: DemoProject[];
+  activeProjectId: string | null;
+  activeProject: DemoProject | null;
+  isLoading: boolean;
+  isMutating: boolean;
+  error: string | null;
+  refresh: () => Promise<ProjectSnapshot>;
+  createProject: (name: string, seed?: CreateProjectPayload) => Promise<ProjectSnapshot>;
+  renameProject: (name: string) => Promise<ProjectSnapshot>;
+  deleteProject: (projectId: string) => Promise<ProjectSnapshot>;
+  setActiveProject: (projectId: string) => void;
+  updateFounderNote: (value: string) => Promise<ProjectSnapshot>;
+  updateFocusItem: (focusItemId: string, title: string, value: string) => Promise<ProjectSnapshot>;
+  addFocusItem: (title: string, value: string) => Promise<ProjectSnapshot>;
+  removeFocusItem: (focusItemId: string) => Promise<ProjectSnapshot>;
+  updateStepValue: (stepId: Parameters<typeof projectService.updateStepValue>[1], value: string) => Promise<ProjectSnapshot>;
+  updateCanvasValue: (canvasId: Parameters<typeof projectService.updateCanvasValue>[1], value: string) => Promise<ProjectSnapshot>;
+  jumpToStep: (stepId: Parameters<typeof projectService.jumpToStep>[1]) => Promise<ProjectSnapshot>;
+  addDecision: (value: string) => Promise<ProjectSnapshot>;
+  toggleTask: (taskId: string) => Promise<ProjectSnapshot>;
+  addQuickTask: (title: string) => Promise<ProjectSnapshot>;
+  addReminder: (title: string, dueLabel: string) => Promise<ProjectSnapshot>;
+  toggleReminder: (reminderId: string) => Promise<ProjectSnapshot>;
+  removeReminder: (reminderId: string) => Promise<ProjectSnapshot>;
+  addCalendarItem: (dayLabel: string, timeLabel: string, title: string) => Promise<ProjectSnapshot>;
+  removeCalendarItem: (itemId: string) => Promise<ProjectSnapshot>;
+  moveBoardCard: (cardId: string, lane: Parameters<typeof projectService.moveBoardCard>[2]) => Promise<ProjectSnapshot>;
+  addNotification: (title: string, detail: string, whenLabel: string) => Promise<ProjectSnapshot>;
+  toggleNotification: (notificationId: string) => Promise<ProjectSnapshot>;
+  removeNotification: (notificationId: string) => Promise<ProjectSnapshot>;
+  addConversation: (
+    person: string,
+    context: string,
+    painPoints: string,
+    signals: string,
+    trustLevel: "Low" | "Medium" | "High",
+    learned: string
+  ) => Promise<ProjectSnapshot>;
+  removeConversation: (conversationId: string) => Promise<ProjectSnapshot>;
+  addFileRecord: (name: string, target: string, url: string) => Promise<ProjectSnapshot>;
+  removeFileRecord: (fileId: string) => Promise<ProjectSnapshot>;
+  updateSprintField: (field: "goal" | "duration" | "review" | "retrospective", value: string) => Promise<ProjectSnapshot>;
+  addSprintTask: (title: string) => Promise<ProjectSnapshot>;
+  moveSprintTask: (taskId: string, status: "To Do" | "In Progress" | "Done") => Promise<ProjectSnapshot>;
+  removeSprintTask: (taskId: string) => Promise<ProjectSnapshot>;
+  updateBusinessField: <
+    TSection extends keyof DemoBusinessSnapshot,
+    TField extends keyof DemoBusinessSnapshot[TSection]
+  >(
+    section: TSection,
+    field: TField,
+    value: DemoBusinessSnapshot[TSection][TField]
+  ) => Promise<ProjectSnapshot>;
+  advanceDay: () => Promise<ProjectSnapshot>;
+  refreshWorkspace: () => Promise<ProjectSnapshot>;
+}
+
+const ProjectWorkspaceContext = createContext<ProjectWorkspaceContextValue | null>(null);
 
 function useProjectMutation<TArgs extends unknown[]>(
   setSnapshot: Dispatch<SetStateAction<ProjectSnapshot>>,
@@ -35,7 +95,7 @@ function useProjectMutation<TArgs extends unknown[]>(
   );
 }
 
-export function useProjectWorkspace() {
+export function ProjectWorkspaceProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<ProjectSnapshot>(() => projectService.getInitialSnapshot());
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
@@ -103,61 +163,103 @@ export function useProjectWorkspace() {
     setSnapshot((current) => projectService.setActiveProject(current, projectId));
   }, []);
 
-  return {
-    projects: snapshot.projects,
-    activeProjectId: snapshot.activeProjectId,
-    activeProject,
-    isLoading,
-    isMutating,
-    error,
-    refresh,
-    createProject: (name: string, seed?: CreateProjectPayload) => createProject(name, seed),
-    renameProject: (name: string) => renameProject(name),
-    deleteProject: (projectId: string) => deleteProject(projectId),
-    setActiveProject,
-    updateFounderNote: (value: string) => updateFounderNote(value),
-    updateFocusItem: (focusItemId: string, title: string, value: string) => updateFocusItem(focusItemId, title, value),
-    addFocusItem: (title: string, value: string) => addFocusItem(title, value),
-    removeFocusItem: (focusItemId: string) => removeFocusItem(focusItemId),
-    updateStepValue: (stepId: Parameters<typeof projectService.updateStepValue>[1], value: string) => updateStepValue(stepId, value),
-    updateCanvasValue: (canvasId: Parameters<typeof projectService.updateCanvasValue>[1], value: string) => updateCanvasValue(canvasId, value),
-    jumpToStep: (stepId: Parameters<typeof projectService.jumpToStep>[1]) => jumpToStep(stepId),
-    addDecision: (value: string) => addDecision(value),
-    toggleTask: (taskId: string) => toggleTask(taskId),
-    addQuickTask: (title: string) => addQuickTask(title),
-    addReminder: (title: string, dueLabel: string) => addReminder(title, dueLabel),
-    toggleReminder: (reminderId: string) => toggleReminder(reminderId),
-    removeReminder: (reminderId: string) => removeReminder(reminderId),
-    addCalendarItem: (dayLabel: string, timeLabel: string, title: string) => addCalendarItem(dayLabel, timeLabel, title),
-    removeCalendarItem: (itemId: string) => removeCalendarItem(itemId),
-    moveBoardCard: (cardId: string, lane: Parameters<typeof projectService.moveBoardCard>[2]) => moveBoardCard(cardId, lane),
-    addNotification: (title: string, detail: string, whenLabel: string) => addNotification(title, detail, whenLabel),
-    toggleNotification: (notificationId: string) => toggleNotification(notificationId),
-    removeNotification: (notificationId: string) => removeNotification(notificationId),
-    addConversation: (
-      person: string,
-      context: string,
-      painPoints: string,
-      signals: string,
-      trustLevel: "Low" | "Medium" | "High",
-      learned: string
-    ) => addConversation(person, context, painPoints, signals, trustLevel, learned),
-    removeConversation: (conversationId: string) => removeConversation(conversationId),
-    addFileRecord: (name: string, target: string, url: string) => addFileRecord(name, target, url),
-    removeFileRecord: (fileId: string) => removeFileRecord(fileId),
-    updateSprintField: (field: "goal" | "duration" | "review" | "retrospective", value: string) => updateSprintField(field, value),
-    addSprintTask: (title: string) => addSprintTask(title),
-    moveSprintTask: (taskId: string, status: "To Do" | "In Progress" | "Done") => moveSprintTask(taskId, status),
-    removeSprintTask: (taskId: string) => removeSprintTask(taskId),
-    updateBusinessField: <
-      TSection extends keyof DemoBusinessSnapshot,
-      TField extends keyof DemoBusinessSnapshot[TSection]
-    >(
-      section: TSection,
-      field: TField,
-      value: DemoBusinessSnapshot[TSection][TField]
-    ) => updateBusinessField(section, field, value),
-    advanceDay: () => advanceDay(),
-    refreshWorkspace: refresh
-  };
+  const value = useMemo<ProjectWorkspaceContextValue>(
+    () => ({
+      projects: snapshot.projects,
+      activeProjectId: snapshot.activeProjectId,
+      activeProject,
+      isLoading,
+      isMutating,
+      error,
+      refresh,
+      createProject: (name: string, seed?: CreateProjectPayload) => createProject(name, seed),
+      renameProject: (name: string) => renameProject(name),
+      deleteProject: (projectId: string) => deleteProject(projectId),
+      setActiveProject,
+      updateFounderNote: (fieldValue: string) => updateFounderNote(fieldValue),
+      updateFocusItem: (focusItemId: string, title: string, fieldValue: string) => updateFocusItem(focusItemId, title, fieldValue),
+      addFocusItem: (title: string, fieldValue: string) => addFocusItem(title, fieldValue),
+      removeFocusItem: (focusItemId: string) => removeFocusItem(focusItemId),
+      updateStepValue: (stepId, fieldValue) => updateStepValue(stepId, fieldValue),
+      updateCanvasValue: (canvasId, fieldValue) => updateCanvasValue(canvasId, fieldValue),
+      jumpToStep: (stepId) => jumpToStep(stepId),
+      addDecision: (fieldValue: string) => addDecision(fieldValue),
+      toggleTask: (taskId: string) => toggleTask(taskId),
+      addQuickTask: (title: string) => addQuickTask(title),
+      addReminder: (title: string, dueLabel: string) => addReminder(title, dueLabel),
+      toggleReminder: (reminderId: string) => toggleReminder(reminderId),
+      removeReminder: (reminderId: string) => removeReminder(reminderId),
+      addCalendarItem: (dayLabel: string, timeLabel: string, title: string) => addCalendarItem(dayLabel, timeLabel, title),
+      removeCalendarItem: (itemId: string) => removeCalendarItem(itemId),
+      moveBoardCard: (cardId, lane) => moveBoardCard(cardId, lane),
+      addNotification: (title: string, detail: string, whenLabel: string) => addNotification(title, detail, whenLabel),
+      toggleNotification: (notificationId: string) => toggleNotification(notificationId),
+      removeNotification: (notificationId: string) => removeNotification(notificationId),
+      addConversation,
+      removeConversation: (conversationId: string) => removeConversation(conversationId),
+      addFileRecord: (name: string, target: string, url: string) => addFileRecord(name, target, url),
+      removeFileRecord: (fileId: string) => removeFileRecord(fileId),
+      updateSprintField: (field, fieldValue) => updateSprintField(field, fieldValue),
+      addSprintTask: (title: string) => addSprintTask(title),
+      moveSprintTask: (taskId: string, status: "To Do" | "In Progress" | "Done") => moveSprintTask(taskId, status),
+      removeSprintTask: (taskId: string) => removeSprintTask(taskId),
+      updateBusinessField,
+      advanceDay: () => advanceDay(),
+      refreshWorkspace: refresh
+    }),
+    [
+      activeProject,
+      addCalendarItem,
+      addConversation,
+      addDecision,
+      addFileRecord,
+      addFocusItem,
+      addNotification,
+      addQuickTask,
+      addReminder,
+      addSprintTask,
+      advanceDay,
+      createProject,
+      deleteProject,
+      error,
+      isLoading,
+      isMutating,
+      jumpToStep,
+      moveBoardCard,
+      moveSprintTask,
+      refresh,
+      removeCalendarItem,
+      removeConversation,
+      removeFileRecord,
+      removeFocusItem,
+      removeNotification,
+      removeReminder,
+      removeSprintTask,
+      renameProject,
+      setActiveProject,
+      snapshot.activeProjectId,
+      snapshot.projects,
+      toggleNotification,
+      toggleReminder,
+      toggleTask,
+      updateBusinessField,
+      updateCanvasValue,
+      updateFocusItem,
+      updateFounderNote,
+      updateSprintField,
+      updateStepValue
+    ]
+  );
+
+  return createElement(ProjectWorkspaceContext.Provider, { value }, children);
+}
+
+export function useProjectWorkspace() {
+  const context = useContext(ProjectWorkspaceContext);
+
+  if (!context) {
+    throw new Error("useProjectWorkspace must be used within ProjectWorkspaceProvider.");
+  }
+
+  return context;
 }

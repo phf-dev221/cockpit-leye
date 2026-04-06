@@ -91,21 +91,41 @@ async function persistActiveProject(snapshot: ProjectSnapshot) {
   return snapshot;
 }
 
+function getActiveProject(snapshot: ProjectSnapshot) {
+  return snapshot.projects.find((project) => project.id === snapshot.activeProjectId) ?? null;
+}
+
+function replaceActiveProjectCollection<TKey extends keyof DemoProject>(
+  snapshot: ProjectSnapshot,
+  key: TKey,
+  value: DemoProject[TKey]
+): ProjectSnapshot {
+  return updateActiveProject(snapshot, (project) => ({
+    ...project,
+    [key]: value
+  }));
+}
+
+function toTaskStatus(done: boolean) {
+  return done ? "done" : "open";
+}
+
+function toTrustLevel(value: "Low" | "Medium" | "High") {
+  return value.toLowerCase();
+}
+
 export const projectService = {
   getInitialSnapshot(): ProjectSnapshot {
     return EMPTY_SNAPSHOT;
   },
 
   async loadSnapshot(): Promise<ProjectSnapshot> {
-    try {
-      const response = await projectApi.listProjects();
-      return normalizeSnapshot({
-        projects: response.data ?? [],
-        activeProjectId: response.meta?.activeProjectId ?? response.data?.[0]?.id ?? null
-      });
-    } catch {
-      return EMPTY_SNAPSHOT;
-    }
+    const response = await projectApi.listProjects();
+
+    return normalizeSnapshot({
+      projects: response.data ?? [],
+      activeProjectId: response.meta?.activeProjectId ?? response.data?.[0]?.id ?? null
+    });
   },
 
   setActiveProject(snapshot: ProjectSnapshot, projectId: string): ProjectSnapshot {
@@ -175,40 +195,61 @@ export const projectService = {
     title: string,
     value: string
   ): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        focusItems: project.focusItems.map((item) =>
-          item.id === focusItemId
-            ? {
-                ...item,
-                title: title.trim() || item.title,
-                value: value.trim() || item.value
-              }
-            : item
-        )
-      }))
+    const activeProject = getActiveProject(snapshot);
+    if (!activeProject) {
+      return snapshot;
+    }
+
+    const updatedItem = await projectApi.updateFocusItem(activeProject.id, focusItemId, {
+      title: title.trim(),
+      content: value.trim()
+    });
+
+    if (!updatedItem) {
+      return snapshot;
+    }
+
+    return replaceActiveProjectCollection(
+      snapshot,
+      "focusItems",
+      activeProject.focusItems.map((item) => (item.id === focusItemId ? updatedItem : item))
     );
   },
 
   async addFocusItem(snapshot: ProjectSnapshot, title: string, value: string): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        focusItems:
-          title.trim() && value.trim()
-            ? [{ id: `focus-${Date.now()}`, title: title.trim(), value: value.trim() }, ...project.focusItems].slice(0, 6)
-            : project.focusItems
-      }))
-    );
+    const activeProject = getActiveProject(snapshot);
+    const trimmedTitle = title.trim();
+    const trimmedValue = value.trim();
+
+    if (!activeProject || !trimmedTitle || !trimmedValue) {
+      return snapshot;
+    }
+
+    const createdItem = await projectApi.createFocusItem(activeProject.id, {
+      title: trimmedTitle,
+      content: trimmedValue,
+      position: 1,
+      is_pinned: false
+    });
+
+    if (!createdItem) {
+      return snapshot;
+    }
+
+    return replaceActiveProjectCollection(snapshot, "focusItems", [createdItem, ...activeProject.focusItems].slice(0, 6));
   },
 
   async removeFocusItem(snapshot: ProjectSnapshot, focusItemId: string): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        focusItems: project.focusItems.filter((item) => item.id !== focusItemId)
-      }))
+    const activeProject = getActiveProject(snapshot);
+    if (!activeProject) {
+      return snapshot;
+    }
+
+    await projectApi.deleteFocusItem(activeProject.id, focusItemId);
+    return replaceActiveProjectCollection(
+      snapshot,
+      "focusItems",
+      activeProject.focusItems.filter((item) => item.id !== focusItemId)
     );
   },
 
@@ -249,23 +290,47 @@ export const projectService = {
   },
 
   async toggleTask(snapshot: ProjectSnapshot, taskId: string): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        quickTasks: project.quickTasks.map((task) => (task.id === taskId ? { ...task, done: !task.done } : task))
-      }))
+    const activeProject = getActiveProject(snapshot);
+    const currentTask = activeProject?.quickTasks.find((task) => task.id === taskId);
+
+    if (!activeProject || !currentTask) {
+      return snapshot;
+    }
+
+    const updatedTask = await projectApi.updateTask(activeProject.id, taskId, {
+      status: toTaskStatus(!currentTask.done)
+    });
+
+    if (!updatedTask) {
+      return snapshot;
+    }
+
+    return replaceActiveProjectCollection(
+      snapshot,
+      "quickTasks",
+      activeProject.quickTasks.map((task) => (task.id === taskId ? updatedTask : task))
     );
   },
 
   async addQuickTask(snapshot: ProjectSnapshot, title: string): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        quickTasks: title.trim()
-          ? [{ id: `task-${Date.now()}`, title: title.trim(), done: false }, ...project.quickTasks].slice(0, 8)
-          : project.quickTasks
-      }))
-    );
+    const activeProject = getActiveProject(snapshot);
+    const trimmedTitle = title.trim();
+
+    if (!activeProject || !trimmedTitle) {
+      return snapshot;
+    }
+
+    const createdTask = await projectApi.createTask(activeProject.id, {
+      title: trimmedTitle,
+      status: "open",
+      position: 1
+    });
+
+    if (!createdTask) {
+      return snapshot;
+    }
+
+    return replaceActiveProjectCollection(snapshot, "quickTasks", [createdTask, ...activeProject.quickTasks].slice(0, 8));
   },
 
   async addReminder(snapshot: ProjectSnapshot, title: string, dueLabel: string): Promise<ProjectSnapshot> {
@@ -390,63 +455,85 @@ export const projectService = {
     trustLevel: "Low" | "Medium" | "High",
     learned: string
   ): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        conversations:
-          person.trim() && context.trim()
-            ? [
-                {
-                  id: `conv-${Date.now()}`,
-                  person: person.trim(),
-                  context: context.trim(),
-                  painPoints: painPoints.trim(),
-                  signals: signals.trim(),
-                  trustLevel,
-                  learned: learned.trim()
-                },
-                ...project.conversations
-              ].slice(0, 12)
-            : project.conversations
-      }))
+    const activeProject = getActiveProject(snapshot);
+    const trimmedPerson = person.trim();
+    const trimmedContext = context.trim();
+
+    if (!activeProject || !trimmedPerson || !trimmedContext) {
+      return snapshot;
+    }
+
+    const createdConversation = await projectApi.createConversation(activeProject.id, {
+      person_name: trimmedPerson,
+      context: trimmedContext,
+      pain_points_text: painPoints.trim(),
+      signals_text: signals.trim(),
+      trust_level: toTrustLevel(trustLevel),
+      learned_text: learned.trim()
+    });
+
+    if (!createdConversation) {
+      return snapshot;
+    }
+
+    return replaceActiveProjectCollection(
+      snapshot,
+      "conversations",
+      [createdConversation, ...activeProject.conversations].slice(0, 12)
     );
   },
 
   async removeConversation(snapshot: ProjectSnapshot, conversationId: string): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        conversations: project.conversations.filter((conversation) => conversation.id !== conversationId)
-      }))
+    const activeProject = getActiveProject(snapshot);
+    if (!activeProject) {
+      return snapshot;
+    }
+
+    await projectApi.deleteConversation(activeProject.id, conversationId);
+    return replaceActiveProjectCollection(
+      snapshot,
+      "conversations",
+      activeProject.conversations.filter((conversation) => conversation.id !== conversationId)
     );
   },
 
   async addFileRecord(snapshot: ProjectSnapshot, name: string, target: string, url: string): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        files:
-          name.trim() && target.trim()
-            ? [
-                {
-                  id: `file-${Date.now()}`,
-                  name: name.trim(),
-                  target: target.trim(),
-                  url: url.trim() || "pending-upload"
-                },
-                ...project.files
-              ].slice(0, 12)
-            : project.files
-      }))
-    );
+    const activeProject = getActiveProject(snapshot);
+    const trimmedName = name.trim();
+    const trimmedTarget = target.trim();
+    const normalizedUrl = url.trim() || `https://placeholder.local/${encodeURIComponent(trimmedName || "file")}`;
+
+    if (!activeProject || !trimmedName || !trimmedTarget) {
+      return snapshot;
+    }
+
+    const createdFile = await projectApi.createFileRecord(activeProject.id, {
+      section_key: trimmedTarget,
+      storage_provider: "manual",
+      provider_public_id: `manual-${Date.now()}`,
+      file_name: trimmedName,
+      resource_type: "raw",
+      secure_url: normalizedUrl
+    });
+
+    if (!createdFile) {
+      return snapshot;
+    }
+
+    return replaceActiveProjectCollection(snapshot, "files", [createdFile, ...activeProject.files].slice(0, 12));
   },
 
   async removeFileRecord(snapshot: ProjectSnapshot, fileId: string): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        files: project.files.filter((file) => file.id !== fileId)
-      }))
+    const activeProject = getActiveProject(snapshot);
+    if (!activeProject) {
+      return snapshot;
+    }
+
+    await projectApi.deleteFileRecord(activeProject.id, fileId);
+    return replaceActiveProjectCollection(
+      snapshot,
+      "files",
+      activeProject.files.filter((file) => file.id !== fileId)
     );
   },
 

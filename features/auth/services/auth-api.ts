@@ -1,62 +1,70 @@
 "use client";
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
+import { requestJson } from "@/lib/api/client";
+import { clearAuthSession, setAuthSession, type AuthSession } from "@/features/auth/services/auth-session";
 
-function buildApiUrl(path: string) {
-  return `${API_BASE_URL}${path}`;
-}
+export interface AuthApiResponse extends AuthSession {}
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(buildApiUrl(path), {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {})
-    },
-    credentials: "include",
-    cache: "no-store"
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Request failed with status ${response.status}`);
+function persistSession(response: AuthApiResponse) {
+  if (response.token) {
+    setAuthSession(response);
   }
 
-  if (response.status === 204) {
-    return {} as T;
-  }
-
-  return (await response.json()) as T;
+  return response;
 }
 
 export const authApi = {
-  login(payload: { email: string; password: string }) {
-    return requestJson("/api/auth/login", {
+  async login(payload: { email: string; password: string }) {
+    const response = await requestJson<AuthApiResponse>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(payload)
     });
+
+    return persistSession(response);
   },
 
-  register(payload: {
+  async register(payload: {
     fullName: string;
     email: string;
     password: string;
     workspaceName?: string;
   }) {
-    return requestJson("/api/auth/register", {
+    const response = await requestJson<AuthApiResponse>("/api/auth/register", {
       method: "POST",
       body: JSON.stringify(payload)
     });
+
+    return persistSession(response);
   },
 
-  acceptInvitation(payload: {
+  async acceptInvitation(payload: {
     token: string;
     fullName?: string;
     password?: string;
   }) {
-    return requestJson("/api/workspaces/invitations/accept", {
+    const response = await requestJson<AuthApiResponse>("/api/workspaces/invitations/accept", {
       method: "POST",
       body: JSON.stringify(payload)
     });
+
+    return persistSession(response);
+  },
+
+  me() {
+    return requestJson<{
+      id: number | string;
+      full_name: string;
+      email: string;
+      avatar_url?: string | null;
+      timezone?: string | null;
+      locale?: string | null;
+    }>("/api/user");
+  },
+
+  async logout() {
+    await requestJson("/api/auth/logout", {
+      method: "POST"
+    });
+    clearAuthSession();
   }
 };

@@ -168,9 +168,13 @@ export function DemoWorkbench({
   const setWorkspaceView = useUiStore((state) => state.setWorkspaceView);
 
   if (!activeProject) {
+    const isAuthIssue = (error ?? "").toLowerCase().includes("unauthenticated");
+
     return (
       <EmptyProjectState
+        title={isAuthIssue ? "Authentication required." : undefined}
         description={error ?? "The frontend is ready for backend data, but no project has been returned by the API yet."}
+        showLogin={isAuthIssue}
       />
     );
   }
