@@ -6,7 +6,6 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronDown,
-  Layers3,
   Sparkles,
   Wand2
 } from "lucide-react";
@@ -159,6 +158,27 @@ const guidedSteps: StepDefinition[] = [
   }
 ];
 
+const starterRoutes = [
+  {
+    id: "startup",
+    label: "Validate idea",
+    title: "Start with the problem and first user",
+    description: "Best when you want to move fast from idea to first project structure."
+  },
+  {
+    id: "discovery",
+    label: "Discovery",
+    title: "Turn conversations into a sharper direction",
+    description: "Useful when the project exists but the customer signal still feels blurry."
+  },
+  {
+    id: "pitch",
+    label: "Pitch",
+    title: "Shape a cleaner project story",
+    description: "Good when you want a more investor or partner ready structure."
+  }
+] as const;
+
 export function getEmptyCreateProjectDraft(): CreateProjectDraft {
   return {
     name: "",
@@ -260,6 +280,7 @@ export function ProjectCreationWizard({
 }: ProjectCreationWizardProps) {
   const [mode, setMode] = useState<WizardMode>("simple");
   const [expandedStepId, setExpandedStepId] = useState<string | null>(guidedSteps[0].id);
+  const [selectedRoute, setSelectedRoute] = useState<(typeof starterRoutes)[number]["id"] | null>(null);
 
   const visibleSteps = useMemo(() => getVisibleSteps(mode), [mode]);
   const activeIndex = visibleSteps.findIndex((step) => step.id === expandedStepId);
@@ -285,6 +306,7 @@ export function ProjectCreationWizard({
   ).length;
   const activeStepCompletion = activeStep ? getStepCompletion(activeStep, value) : 0;
   const coreStepsCount = guidedSteps.filter((step) => step.mode === "core").length;
+  const activeStepEstimate = activeStep ? Math.max(1, Math.ceil(activeStep.fields.length * 0.75)) : 1;
 
   useEffect(() => {
     if (expandedStepId && !visibleSteps.some((step) => step.id === expandedStepId)) {
@@ -339,68 +361,19 @@ export function ProjectCreationWizard({
       ...value,
       ...drafts[kind]
     });
+    setSelectedRoute(kind);
+
+    if (kind === "pitch") {
+      setMode("standard");
+    }
   }
 
   return (
     <div
-      className="mx-auto min-h-[78vh] w-full max-w-[980px] overflow-hidden rounded-[2rem] border border-slate-200 bg-white text-slate-950 shadow-[0_30px_80px_rgba(15,23,42,0.12)]"
-      style={{ color: "#0f172a" }}
+      className="mx-auto min-h-[78vh] w-full max-w-[1180px] overflow-hidden rounded-[2.25rem] border border-[#d4c6b2] bg-[linear-gradient(180deg,#fbf5ec_0%,#f4ebdf_100%)] text-slate-950 shadow-[0_34px_90px_rgba(69,45,18,0.14)] lg:grid lg:grid-cols-[340px_minmax(0,1fr)]"
     >
-      <aside
-        className="flex flex-col bg-slate-50 px-6 py-6 text-slate-950 sm:px-7"
-        style={{ color: "#0f172a" }}
-      >
-        <div className="border-b border-slate-200 pb-6">
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Project Creation</p>
-          <h2 className="mt-3 pr-4 text-3xl font-semibold leading-tight text-slate-950">Simple first, complete when needed</h2>
-          <p className="mt-3 text-sm leading-7 text-slate-700">
-            Start with the essentials for a faster first value, then open the advanced blocks only when you need them.
-          </p>
-          <div className="mt-5 space-y-2">
-            <div className="h-2 rounded-full bg-slate-200">
-              <div className="h-full rounded-full bg-[#6ee7b7] transition-all" style={{ width: `${overallCompletion}%` }} />
-            </div>
-            <p className="text-sm text-slate-700">{overallCompletion}% of the core setup is done.</p>
-          </div>
-        </div>
-
-        <div className="mt-6 space-y-3 border-b border-slate-200 pb-6">
-          <div className="flex items-center gap-2 text-slate-950">
-            <Layers3 className="h-4 w-4" />
-            <span className="text-xs uppercase tracking-[0.18em]">Flow Mode</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setMode("simple")}
-              className={`flex-1 rounded-full px-4 py-2.5 text-sm font-medium transition duration-200 ${
-                mode === "simple"
-                  ? "bg-slate-300 text-slate-950 shadow-sm hover:bg-slate-400"
-                  : "bg-white text-slate-950 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-sm"
-              }`}
-            >
-              Simple
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("standard")}
-              className={`flex-1 rounded-full px-4 py-2.5 text-sm font-medium transition duration-200 ${
-                mode === "standard"
-                  ? "bg-slate-300 text-slate-950 shadow-sm hover:bg-slate-400"
-                  : "bg-white text-slate-950 hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-sm"
-              }`}
-            >
-              Standard
-            </button>
-          </div>
-          <p className="max-w-[28ch] text-sm leading-6 text-slate-700">
-            {mode === "simple"
-              ? "Only the essential blocks are shown so the project can be created faster."
-              : "All strategy blocks are available for a more complete setup."}
-          </p>
-        </div>
-
-        <div className="mt-6 flex-1 overflow-y-auto pr-4">
+      <aside className="flex flex-col bg-[linear-gradient(180deg,#f7efe5_0%,#eadccc_100%)] px-6 py-6 text-[#24170f] sm:px-7">
+        <div className="flex-1">
           <div className="space-y-3">
           {visibleSteps.map((step) => {
             const stepCompletion = getStepCompletion(step, value);
@@ -413,126 +386,208 @@ export function ProjectCreationWizard({
                   onClick={() => selectStep(step.id)}
                   className={`w-full rounded-[1.35rem] border px-5 py-5 text-left transition ${
                     active
-                      ? "border-slate-900 bg-slate-900 text-white shadow-panel"
-                      : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+                      ? "border-[#f3c590] bg-[linear-gradient(180deg,#fff4e7_0%,#f2ddc6_100%)] text-[#23160e] shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+                      : "border-[#dbcab5] bg-white/76 text-[#24170f] hover:bg-white"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className={`text-[11px] uppercase tracking-[0.18em] ${active ? "text-white/75" : "text-slate-500"}`}>
+                        <span className={`text-[11px] uppercase tracking-[0.18em] ${active ? "text-[#7f5a35]" : "text-[#7d6246]"}`}>
                           {step.eyebrow}
                         </span>
-                        <span className={`text-xs ${active ? "text-white/75" : "text-slate-500"}`}>
+                        <span className={`text-xs ${active ? "text-[#7f5a35]" : "text-[#7d6246]"}`}>
                           {stepCompletion}%
                         </span>
                       </div>
-                      <p className={`mt-2 pr-8 text-sm font-semibold leading-6 ${active ? "text-white" : "text-slate-900"}`}>
+                      <p className={`mt-2 pr-8 text-sm font-semibold leading-6 ${active ? "text-[#23160e]" : "text-[#24170f]"}`}>
                         {step.title}
                       </p>
-                      <p className={`mt-1 text-xs leading-5 ${active ? "text-white/75" : "text-slate-500"}`}>
+                      <p className={`mt-1 text-xs leading-5 ${active ? "text-[#7f5a35]" : "text-[#7d6246]"}`}>
                         {active ? "Click again to close" : "Open this step"}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {stepCompletion === 100 ? (
-                        <CheckCircle2 className={`h-4 w-4 ${active ? "text-white" : "text-[#0f766e]"}`} />
+                        <CheckCircle2 className={`h-4 w-4 ${active ? "text-[#23160e]" : "text-[#f4b35d]"}`} />
                       ) : null}
-                      <ChevronDown className={`h-4 w-4 transition ${active ? "rotate-180 text-white/80" : "text-slate-500"}`} />
+                      <ChevronDown className={`h-4 w-4 transition ${active ? "rotate-180 text-[#7f5a35]" : "text-[#7d6246]"}`} />
                     </div>
                   </div>
                 </button>
-                {active ? (
-                  <div className="rounded-[1.35rem] border border-slate-200 bg-slate-50 px-6 py-6">
-                    <div className="border-l-4 border-slate-300 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-600">
-                      {step.helper}
-                    </div>
-                    <div className="mt-7 space-y-7">
-                      {step.fields.map((field) => (
-                        <div key={field.key} className="border-b border-slate-200 px-2 pb-7">
-                          <div className="flex items-center justify-between gap-3">
-                            <label className="text-sm font-semibold text-slate-900">{field.label}</label>
-                            {step.required.includes(field.key) ? (
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">required</span>
-                            ) : null}
-                          </div>
-                          {field.tall ? (
-                            <Textarea
-                              value={value[field.key]}
-                              onChange={(event) => onChange(updateField(value, field.key, event.target.value))}
-                              placeholder={field.placeholder}
-                              className="mt-4 min-h-32 rounded-[1.35rem] bg-white px-5 py-4"
-                            />
-                          ) : (
-                            <Input
-                              value={value[field.key]}
-                              onChange={(event) => onChange(updateField(value, field.key, event.target.value))}
-                              placeholder={field.placeholder}
-                              className="mt-4 rounded-[1.35rem] bg-white px-5 py-4"
-                            />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 px-2 pt-6">
-                      <div className="flex flex-wrap gap-3">
-                        <Button variant="ghost" className="bg-slate-100" onClick={() => moveStep(-1)} disabled={activeIndex <= 0}>
-                          <ArrowLeft className="mr-2 h-4 w-4" />
-                          Back
-                        </Button>
-                        {activeIndex < visibleSteps.length - 1 ? (
-                          <Button className="bg-slate-950 text-white hover:bg-slate-900" onClick={() => moveStep(1)}>
-                            Next
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <Button className="bg-slate-950 text-white hover:bg-slate-900" onClick={() => onSubmit(buildCreateProjectSeed(value))} disabled={!essentialsReady}>
-                            {submitLabel}
-                          </Button>
-                        )}
-                        {mode === "simple" ? (
-                          <Button variant="secondary" className="bg-slate-200 text-slate-950" onClick={() => setMode("standard")}>
-                            Open advanced blocks
-                          </Button>
-                        ) : null}
-                      </div>
-                      <div className="text-sm text-slate-600">
-                        {completedCoreSteps}/{coreStepsCount} core sections ready
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-                {!active ? <div className="h-px bg-slate-200" /> : null}
+                {!active ? <div className="h-px bg-[#dbcab5]" /> : null}
               </div>
             );
           })}
           </div>
         </div>
 
-        <div className="mt-6 border-t border-slate-200 pt-6">
-          <div className="flex items-center gap-2 text-slate-950">
+        <div className="mt-6 border-t border-[#dbcab5] pt-6">
+          <div className="flex items-center gap-2 text-[#24170f]">
             <Sparkles className="h-4 w-4" />
-            <span className="text-xs uppercase tracking-[0.18em]">Quick Start</span>
+            <span className="text-xs uppercase tracking-[0.18em] text-[#7d6246]">Quick Start</span>
           </div>
-          <p className="mt-3 max-w-[30ch] text-sm leading-6 text-slate-700">
+          <p className="mt-3 max-w-[30ch] text-sm leading-6 text-[#24170f]">
             Use a starter draft inspired by standard startup structure and discovery flow, then adjust only what matters.
           </p>
           <div className="mt-4 space-y-2">
-            <Button variant="secondary" className="w-full justify-between bg-white text-slate-950" onClick={() => fillStarterDraft("startup")}>
+            <Button variant="secondary" className="w-full justify-between bg-white text-[#20140e]" onClick={() => fillStarterDraft("startup")}>
               Startup standard
               <Sparkles className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" className="w-full justify-between border border-slate-200 bg-slate-50 text-slate-950 hover:bg-slate-100" onClick={() => fillStarterDraft("discovery")}>
+            <Button variant="ghost" className="w-full justify-between border border-[#dbcab5] bg-white/75 text-[#24170f] hover:bg-white" onClick={() => fillStarterDraft("discovery")}>
               Discovery flow
               <Wand2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" className="w-full justify-between border border-slate-200 bg-slate-50 text-slate-950 hover:bg-slate-100" onClick={() => fillStarterDraft("pitch")}>
+            <Button variant="ghost" className="w-full justify-between border border-[#dbcab5] bg-white/75 text-[#24170f] hover:bg-white" onClick={() => fillStarterDraft("pitch")}>
               Pitch-ready blocks
               <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </aside>
+
+      <section className="bg-[linear-gradient(180deg,#fffaf3_0%,#f5ecde_100%)] px-5 py-5 text-[#24170f] sm:px-6 sm:py-6">
+        <div className="rounded-[1.8rem] border border-[#e2d3c1] bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,248,240,0.94))] p-5 text-[#24170f] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] sm:p-6">
+          <div className="rounded-[1.6rem] border border-[#eadccc] bg-[linear-gradient(180deg,#fff8ef_0%,#f7ecdc_100%)] p-4 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-2xl">
+                <p className="text-xs uppercase tracking-[0.22em] text-[#8d6f53]">Start Route</p>
+                <h3 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#24170f]">
+                  Pick a route instead of starting from a blank form
+                </h3>
+                <p className="mt-2 text-sm leading-7 text-[#6b5341]">
+                  The strongest onboarding flows get you to a meaningful artifact fast. Choose the route that matches
+                  your intent, then refine the project instead of filling every field from zero.
+                </p>
+              </div>
+              <div className="rounded-[1.2rem] border border-[#e6d6c3] bg-white/80 px-4 py-3 text-sm text-[#6b5341]">
+                <span className="font-medium text-[#24170f]">{completedCoreSteps}</span> of {coreStepsCount} core steps ready
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {starterRoutes.map((route) => {
+                const selected = selectedRoute === route.id;
+
+                return (
+                  <button
+                    key={route.id}
+                    type="button"
+                    onClick={() => fillStarterDraft(route.id)}
+                    className={`rounded-[1.35rem] border px-4 py-4 text-left transition ${
+                      selected
+                        ? "border-[#24170f] bg-[#ead8c1] text-[#24170f] shadow-[0_16px_36px_rgba(36,23,15,0.12)]"
+                        : "border-[#e2d3c1] bg-white/84 text-[#24170f] hover:-translate-y-0.5 hover:bg-white"
+                    }`}
+                  >
+                    <p className={`text-[11px] uppercase tracking-[0.2em] ${selected ? "text-[#8d6f53]" : "text-[#8d6f53]"}`}>
+                      {route.label}
+                    </p>
+                    <p className="mt-2 text-base font-semibold text-[#24170f]">
+                      {route.title}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-[#6b5341]">
+                      {route.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e9dccd] pb-5">
+            <div className="max-w-2xl">
+              <p className="text-xs uppercase tracking-[0.22em] text-[#8d6f53]">
+                {activeStep?.eyebrow ?? "Setup"}
+              </p>
+              <h3 className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-[#24170f]">
+                {activeStep?.title ?? "Open a step from the left"}
+              </h3>
+              <p className="mt-3 text-sm leading-7 text-[#6b5341]">
+                {activeStep?.description ?? "Choose the block you want to work on and complete the core logic of the project."}
+              </p>
+            </div>
+            <div className="min-w-[180px] rounded-[1.4rem] border border-[#eadccc] bg-white/72 px-4 py-4">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[#8d6f53]">Current Step</p>
+              <p className="mt-2 text-2xl font-semibold text-[#24170f]">{activeStepCompletion}%</p>
+              <p className="mt-1 text-sm text-[#6b5341]">
+                Step {Math.max(activeIndex + 1, 1)} of {visibleSteps.length} • about {activeStepEstimate} min
+              </p>
+            </div>
+          </div>
+
+          {activeStep ? (
+            <div className="mt-6">
+              <div className="rounded-[1.35rem] border border-[#ebdcc9] bg-[linear-gradient(180deg,#fffefd_0%,#f8f0e6_100%)] px-5 py-4 text-sm leading-7 text-[#5f4937]">
+                {activeStep.helper}
+              </div>
+
+              <div className="mt-7 grid gap-5">
+                {activeStep.fields.map((field) => (
+                  <div key={field.key} className="rounded-[1.5rem] border border-[#eadccc] bg-white/76 px-5 py-5 text-[#24170f] shadow-[0_10px_24px_rgba(80,54,29,0.06)]">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-sm font-semibold text-[#23160e]">{field.label}</label>
+                      {activeStep.required.includes(field.key) ? (
+                        <span className="rounded-full bg-[#f7e6d2] px-3 py-1 text-xs text-[#8a5a2e]">required</span>
+                      ) : null}
+                    </div>
+                    {field.tall ? (
+                      <Textarea
+                        value={value[field.key]}
+                        onChange={(event) => onChange(updateField(value, field.key, event.target.value))}
+                        placeholder={field.placeholder}
+                        className="mt-4 min-h-32 rounded-[1.35rem] border-[#e4d3bf] bg-[#fffdfa] px-5 py-4 text-[#24170f] placeholder:text-[#9a826b]"
+                      />
+                    ) : (
+                      <Input
+                        value={value[field.key]}
+                        onChange={(event) => onChange(updateField(value, field.key, event.target.value))}
+                        placeholder={field.placeholder}
+                        className="mt-4 rounded-[1.35rem] border-[#e4d3bf] bg-[#fffdfa] px-5 py-4 text-[#24170f] placeholder:text-[#9a826b]"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-[#eadccc] pt-6">
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="ghost" className="border-[#e0cfbc] bg-white/80 text-[#2b1d12]" onClick={() => moveStep(-1)} disabled={activeIndex <= 0}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  {activeIndex < visibleSteps.length - 1 ? (
+                    <Button className="bg-[#1f1612] text-white hover:bg-[#2a1d17]" onClick={() => moveStep(1)}>
+                      Next
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button className="bg-[#1f1612] text-white hover:bg-[#2a1d17]" onClick={() => onSubmit(buildCreateProjectSeed(value))} disabled={!essentialsReady}>
+                      {submitLabel}
+                    </Button>
+                  )}
+                  {mode === "simple" ? (
+                    <Button variant="secondary" className="bg-[#f0dfc8] text-[#2b1d12]" onClick={() => setMode("standard")}>
+                      Open advanced blocks
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="text-sm text-[#6b5341]">
+                  {completedCoreSteps}/{coreStepsCount} core sections ready
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 rounded-[1.6rem] border border-dashed border-[#d7c6b0] bg-white/56 px-6 py-12 text-center">
+              <p className="text-lg font-medium text-[#2b1d12]">Select a step from the left panel</p>
+              <p className="mt-2 text-sm leading-7 text-[#6b5341]">
+                The form opens here so you can focus on one decision block at a time.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

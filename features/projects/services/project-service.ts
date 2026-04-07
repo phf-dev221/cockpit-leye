@@ -387,12 +387,52 @@ export const projectService = {
   },
 
   async removeCalendarItem(snapshot: ProjectSnapshot, itemId: string): Promise<ProjectSnapshot> {
-    return persistActiveProject(
-      updateActiveProject(snapshot, (project) => ({
-        ...project,
-        calendar: project.calendar.filter((item) => item.id !== itemId)
-      }))
+    const activeProject = getActiveProject(snapshot);
+    if (!activeProject) {
+      return snapshot;
+    }
+
+    await projectApi.deleteCalendarItem(activeProject.id, itemId);
+
+    return replaceActiveProjectCollection(
+      snapshot,
+      "calendar",
+      activeProject.calendar.filter((item) => item.id !== itemId)
     );
+  },
+
+  async scheduleCalendarItem(
+    snapshot: ProjectSnapshot,
+    title: string,
+    startsAt: string,
+    endsAt?: string,
+    itemType: "focus" | "call" | "review" | "milestone" = "focus"
+  ): Promise<ProjectSnapshot> {
+    const activeProject = getActiveProject(snapshot);
+
+    if (!activeProject || !title.trim() || !startsAt.trim()) {
+      return snapshot;
+    }
+
+    const createdItem = await projectApi.createCalendarItem(activeProject.id, {
+      source: "manual",
+      title: title.trim(),
+      item_type: itemType,
+      starts_at: startsAt,
+      ends_at: endsAt?.trim() ? endsAt : null,
+    });
+
+    if (!createdItem) {
+      return snapshot;
+    }
+
+    const nextCalendar = [...activeProject.calendar, createdItem].sort((left, right) => {
+      const leftValue = left.startsAt ? new Date(left.startsAt).getTime() : 0;
+      const rightValue = right.startsAt ? new Date(right.startsAt).getTime() : 0;
+      return leftValue - rightValue;
+    });
+
+    return replaceActiveProjectCollection(snapshot, "calendar", nextCalendar);
   },
 
   async moveBoardCard(snapshot: ProjectSnapshot, cardId: string, lane: DemoBoardLane): Promise<ProjectSnapshot> {

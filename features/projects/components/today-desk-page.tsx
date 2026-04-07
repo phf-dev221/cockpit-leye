@@ -18,7 +18,7 @@ function getNextStep(project: NonNullable<ReturnType<typeof useProjectWorkspace>
 
 export function TodayDeskPage({ projectId }: { projectId: string }) {
   useSyncProjectRoute(projectId);
-  const { activeProject, advanceDay, addFocusItem, removeFocusItem, updateFocusItem } = useProjectWorkspace();
+  const { activeProject, advanceDay, addFocusItem, removeFocusItem, updateFocusItem, scheduleCalendarItem, removeCalendarItem } = useProjectWorkspace();
   if (!activeProject) {
     return <EmptyProjectState />;
   }
@@ -29,6 +29,28 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
   const doneTasks = activeProject.quickTasks.filter((task) => task.done).length;
   const [focusDrafts, setFocusDrafts] = useState<Record<string, { title: string; value: string }>>({});
   const [newFocus, setNewFocus] = useState({ title: "", value: "" });
+  const [calendarDraft, setCalendarDraft] = useState({
+    title: "",
+    date: new Date().toISOString().slice(0, 10),
+    startTime: "09:00",
+    endTime: "10:00",
+    type: "focus" as "focus" | "call" | "review" | "milestone"
+  });
+
+  const todaysEvents = activeProject.calendar.filter((item) => {
+    if (item.startsAt) {
+      const date = new Date(item.startsAt);
+      const now = new Date();
+
+      return (
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate()
+      );
+    }
+
+    return item.dayLabel === new Date().toLocaleDateString("en-US", { weekday: "short" });
+  });
 
   useEffect(() => {
     setFocusDrafts(
@@ -238,6 +260,108 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
           </div>
         </SectionContainer>
       </section>
+
+      <SectionContainer
+        eyebrow="Calendar"
+        title="Planifier et voir les evenements du jour"
+        description="Ajoute un evenement manuel maintenant. Les evenements Google synchronises apparaitront aussi ici dans le flux du projet."
+        className="bg-white text-slate-950"
+      >
+        <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
+          <div className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-950">Nouvel evenement</p>
+            <div className="mt-4 grid gap-3">
+              <input
+                value={calendarDraft.title}
+                onChange={(event) => setCalendarDraft((current) => ({ ...current, title: event.target.value }))}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-slate-400"
+                placeholder="Ex: Call investor update"
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  type="date"
+                  value={calendarDraft.date}
+                  onChange={(event) => setCalendarDraft((current) => ({ ...current, date: event.target.value }))}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-slate-400"
+                />
+                <select
+                  value={calendarDraft.type}
+                  onChange={(event) =>
+                    setCalendarDraft((current) => ({
+                      ...current,
+                      type: event.target.value as "focus" | "call" | "review" | "milestone"
+                    }))
+                  }
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-slate-400"
+                >
+                  <option value="focus">Focus</option>
+                  <option value="call">Call</option>
+                  <option value="review">Review</option>
+                  <option value="milestone">Milestone</option>
+                </select>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  type="time"
+                  value={calendarDraft.startTime}
+                  onChange={(event) => setCalendarDraft((current) => ({ ...current, startTime: event.target.value }))}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-slate-400"
+                />
+                <input
+                  type="time"
+                  value={calendarDraft.endTime}
+                  onChange={(event) => setCalendarDraft((current) => ({ ...current, endTime: event.target.value }))}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-slate-400"
+                />
+              </div>
+              <Button
+                onClick={() => {
+                  const startsAt = `${calendarDraft.date}T${calendarDraft.startTime}:00`;
+                  const endsAt = `${calendarDraft.date}T${calendarDraft.endTime}:00`;
+                  void scheduleCalendarItem(calendarDraft.title, startsAt, endsAt, calendarDraft.type);
+                  setCalendarDraft((current) => ({ ...current, title: "" }));
+                }}
+                disabled={!calendarDraft.title.trim() || !calendarDraft.date || !calendarDraft.startTime}
+              >
+                <Plus className="h-4 w-4" />
+                Ajouter l'evenement
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {todaysEvents.length ? (
+              todaysEvents.map((item) => (
+                <div key={item.id} className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950">{item.title}</p>
+                      <p className="mt-1 text-sm text-slate-700">
+                        {item.startsAt
+                          ? new Date(item.startsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                          : item.timeLabel}
+                        {item.endsAt
+                          ? ` - ${new Date(item.endsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                          : ""}
+                      </p>
+                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-500">
+                        {item.type} {item.source ? `• ${item.source}` : ""}
+                      </p>
+                    </div>
+                    <Button variant="ghost" onClick={() => void removeCalendarItem(item.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-[1.2rem] border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">
+                Aucun evenement pour aujourd'hui.
+              </div>
+            )}
+          </div>
+        </div>
+      </SectionContainer>
     </div>
   );
 }

@@ -131,7 +131,10 @@ export interface DemoCalendarItem {
   dayLabel: string;
   timeLabel: string;
   title: string;
-  type: "call" | "focus" | "review";
+  type: "call" | "focus" | "review" | "milestone";
+  startsAt?: string;
+  endsAt?: string | null;
+  source?: "manual" | "google";
 }
 
 export type DemoBoardLane = "now" | "next" | "later";

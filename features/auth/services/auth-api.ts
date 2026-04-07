@@ -1,9 +1,27 @@
 "use client";
 
 import { requestJson } from "@/lib/api/client";
-import { clearAuthSession, setAuthSession, type AuthSession } from "@/features/auth/services/auth-session";
+import {
+  clearAuthSession,
+  setAuthSession,
+  updateAuthSessionUser,
+  type AuthSession,
+  type AuthSessionUser
+} from "@/features/auth/services/auth-session";
 
 export interface AuthApiResponse extends AuthSession {}
+
+interface UserPayload extends AuthSessionUser {}
+
+type UserResponse = { data?: UserPayload } | UserPayload;
+
+function normalizeUserResponse(response: UserResponse): UserPayload | null {
+  if (typeof response === "object" && response !== null && "data" in response) {
+    return response.data ?? null;
+  }
+
+  return response as UserPayload;
+}
 
 function persistSession(response: AuthApiResponse) {
   if (response.token) {
@@ -51,20 +69,37 @@ export const authApi = {
   },
 
   me() {
-    return requestJson<{
-      id: number | string;
-      full_name: string;
-      email: string;
-      avatar_url?: string | null;
-      timezone?: string | null;
-      locale?: string | null;
-    }>("/api/user");
+    return requestJson<UserResponse>("/api/user").then((response) => normalizeUserResponse(response));
+  },
+
+  async updateProfile(payload: {
+    full_name?: string;
+    email?: string;
+    avatar_url?: string | null;
+    timezone?: string | null;
+    locale?: string | null;
+  }) {
+    const response = await requestJson<{ data?: AuthSessionUser } | AuthSessionUser>("/api/user", {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    });
+
+    const user = normalizeUserResponse(response);
+
+    if (user) {
+      updateAuthSessionUser(user);
+    }
+
+    return user;
   },
 
   async logout() {
-    await requestJson("/api/auth/logout", {
-      method: "POST"
-    });
-    clearAuthSession();
+    try {
+      await requestJson("/api/auth/logout", {
+        method: "POST"
+      });
+    } finally {
+      clearAuthSession();
+    }
   }
 };

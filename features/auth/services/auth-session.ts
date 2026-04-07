@@ -1,11 +1,16 @@
 "use client";
 
+import { FRONT_AUTH_COOKIE } from "@/features/auth/auth-constants";
+
 const AUTH_SESSION_KEY = "teranga.auth.session";
 
 export interface AuthSessionUser {
   id: number | string;
   full_name: string;
   email: string;
+  avatar_url?: string | null;
+  timezone?: string | null;
+  locale?: string | null;
 }
 
 export interface AuthSessionWorkspace {
@@ -22,6 +27,19 @@ export interface AuthSession {
 
 function canUseStorage() {
   return typeof window !== "undefined";
+}
+
+function writeFrontAuthCookie(isAuthenticated: boolean) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  if (isAuthenticated) {
+    document.cookie = `${FRONT_AUTH_COOKIE}=1; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+    return;
+  }
+
+  document.cookie = `${FRONT_AUTH_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
 export function getAuthSession(): AuthSession | null {
@@ -49,14 +67,17 @@ export function setAuthSession(session: AuthSession) {
   }
 
   window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+  writeFrontAuthCookie(true);
 }
 
 export function clearAuthSession() {
   if (!canUseStorage()) {
+    writeFrontAuthCookie(false);
     return;
   }
 
   window.localStorage.removeItem(AUTH_SESSION_KEY);
+  writeFrontAuthCookie(false);
 }
 
 export function setActiveWorkspace(
@@ -74,8 +95,25 @@ export function setActiveWorkspace(
   });
 }
 
+export function updateAuthSessionUser(user: AuthSessionUser) {
+  const session = getAuthSession();
+
+  if (!session) {
+    return;
+  }
+
+  setAuthSession({
+    ...session,
+    user
+  });
+}
+
 export function getAuthToken() {
   return getAuthSession()?.token ?? null;
+}
+
+export function hasAuthSession() {
+  return Boolean(getAuthSession()?.token);
 }
 
 export function getActiveWorkspaceId() {

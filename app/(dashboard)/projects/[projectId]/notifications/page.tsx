@@ -1,5 +1,11 @@
-import { ProjectWorkbench } from "@/features/projects/components/project-workbench";
+import { ProjectNotificationsScreen } from "@/features/projects/components/project-notifications-screen";
 
-export default function NotificationsPage() {
-  return <ProjectWorkbench initialView="records" />;
+export default async function NotificationsPage({
+  params
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+
+  return <ProjectNotificationsScreen projectId={projectId} />;
 }

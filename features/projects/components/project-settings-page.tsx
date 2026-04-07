@@ -13,12 +13,16 @@ import { getProjectRoute } from "@/lib/utils";
 
 export function ProjectSettingsPage() {
   const router = useRouter();
-  const { activeProject, projects, renameProject, deleteProject } = useProjectWorkspace();
+  const { activeProject, projects, renameProject, updateFounderNote, deleteProject } = useProjectWorkspace();
   const [nameDraft, setNameDraft] = useState(activeProject?.name ?? "");
+  const [founderNoteDraft, setFounderNoteDraft] = useState(activeProject?.founderNote ?? "");
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setNameDraft(activeProject?.name ?? "");
-  }, [activeProject?.id, activeProject?.name]);
+    setFounderNoteDraft(activeProject?.founderNote ?? "");
+    setMessage(null);
+  }, [activeProject?.founderNote, activeProject?.id, activeProject?.name]);
 
   if (!activeProject) {
     return <EmptyProjectState title="No project selected." description="Create a project from the backend workspace before opening settings." />;
@@ -44,19 +48,28 @@ export function ProjectSettingsPage() {
 
       <SectionContainer
         eyebrow="Project Identity"
-        title="Rename the current project"
-        description="Use a clean name now. We can keep the workspace focused once this moves out of the dashboard."
+        title="Update the current project"
+        description="Modifiez ici l'identite du projet et la note founder de reference."
         className="bg-white"
       >
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="space-y-4">
           <Input value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} />
+          <textarea
+            value={founderNoteDraft}
+            onChange={(event) => setFounderNoteDraft(event.target.value)}
+            placeholder="Founder note"
+            className="min-h-36 w-full rounded-[1.3rem] border border-border bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-primary"
+          />
+          {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
           <Button
-            onClick={() => {
+            onClick={async () => {
               if (!nameDraft.trim()) return;
-              renameProject(nameDraft.trim());
+              await renameProject(nameDraft.trim());
+              await updateFounderNote(founderNoteDraft);
+              setMessage("Projet mis a jour.");
             }}
           >
-            Save name
+            Save project
           </Button>
         </div>
       </SectionContainer>

@@ -35,6 +35,12 @@ interface ProjectWorkspaceContextValue {
   removeReminder: (reminderId: string) => Promise<ProjectSnapshot>;
   addCalendarItem: (dayLabel: string, timeLabel: string, title: string) => Promise<ProjectSnapshot>;
   removeCalendarItem: (itemId: string) => Promise<ProjectSnapshot>;
+  scheduleCalendarItem: (
+    title: string,
+    startsAt: string,
+    endsAt?: string,
+    itemType?: "focus" | "call" | "review" | "milestone"
+  ) => Promise<ProjectSnapshot>;
   moveBoardCard: (cardId: string, lane: Parameters<typeof projectService.moveBoardCard>[2]) => Promise<ProjectSnapshot>;
   addNotification: (title: string, detail: string, whenLabel: string) => Promise<ProjectSnapshot>;
   toggleNotification: (notificationId: string) => Promise<ProjectSnapshot>;
@@ -144,6 +150,7 @@ export function ProjectWorkspaceProvider({ children }: { children: ReactNode }) 
   const removeReminder = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.removeReminder);
   const addCalendarItem = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.addCalendarItem);
   const removeCalendarItem = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.removeCalendarItem);
+  const scheduleCalendarItem = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.scheduleCalendarItem);
   const moveBoardCard = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.moveBoardCard);
   const addNotification = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.addNotification);
   const toggleNotification = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.toggleNotification);
@@ -191,6 +198,12 @@ export function ProjectWorkspaceProvider({ children }: { children: ReactNode }) 
       removeReminder: (reminderId: string) => removeReminder(reminderId),
       addCalendarItem: (dayLabel: string, timeLabel: string, title: string) => addCalendarItem(dayLabel, timeLabel, title),
       removeCalendarItem: (itemId: string) => removeCalendarItem(itemId),
+      scheduleCalendarItem: (
+        title: string,
+        startsAt: string,
+        endsAt?: string,
+        itemType?: "focus" | "call" | "review" | "milestone"
+      ) => scheduleCalendarItem(title, startsAt, endsAt, itemType),
       moveBoardCard: (cardId, lane) => moveBoardCard(cardId, lane),
       addNotification: (title: string, detail: string, whenLabel: string) => addNotification(title, detail, whenLabel),
       toggleNotification: (notificationId: string) => toggleNotification(notificationId),
@@ -229,6 +242,7 @@ export function ProjectWorkspaceProvider({ children }: { children: ReactNode }) 
       moveSprintTask,
       refresh,
       removeCalendarItem,
+      scheduleCalendarItem,
       removeConversation,
       removeFileRecord,
       removeFocusItem,

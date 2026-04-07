@@ -18,21 +18,40 @@ export function ProjectCreationPage() {
   const { createProject } = useProjectWorkspace();
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-slate-600">New Project</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-950">Create outside the dashboard</h1>
-          <p className="mt-2 text-sm leading-7 text-slate-700">
-            A dedicated setup page keeps the cockpit light while still helping you think properly.
-          </p>
+    <div className="space-y-6">
+      <div className="overflow-hidden rounded-[2.2rem] border border-[#1b1613] bg-[linear-gradient(135deg,#171310_0%,#221913_48%,#312017_100%)] px-6 py-6 shadow-[0_30px_90px_rgba(15,10,7,0.28)] sm:px-7 sm:py-7">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.26em] text-[#d8b98f]">New Project</p>
+            <h1 className="mt-3 max-w-2xl text-3xl font-semibold tracking-[-0.06em] text-[#fff8ef] sm:text-4xl">
+              Start with a clean project frame
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#f0dfcb]/88 sm:text-base">
+              Define the core direction first, then let the dashboard inherit a project that already has signal,
+              structure, and a useful first angle.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/6 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#f0dfcb]">
+                Problem
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/6 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#f0dfcb]">
+                First User
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/6 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#f0dfcb]">
+                Wedge
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/6 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#f0dfcb]">
+                Go To Market
+              </span>
+            </div>
+          </div>
+          <Link
+            href={getProjectRoute()}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/8 px-4 py-2.5 text-sm font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white/12"
+          >
+            Back to desk
+          </Link>
         </div>
-        <Link
-          href={getProjectRoute()}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-950 transition-transform duration-200 hover:-translate-y-0.5"
-        >
-          Back to desk
-        </Link>
       </div>
 
       <ProjectCreationWizard

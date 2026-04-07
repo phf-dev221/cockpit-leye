@@ -3,33 +3,32 @@
 import type { ComponentType } from "react";
 
 import Link from "next/link";
-import { Bell, Clock3, FolderKanban, Gauge, MessageSquareText, Rocket } from "lucide-react";
+import { Bell, CalendarDays, Clock3, FolderKanban, Gauge, MessageSquareText, Rocket, UserCircle2 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { useProjectWorkspace } from "@/features/projects/hooks/use-project-workspace";
 import { getProjectRoute } from "@/lib/utils";
-import { useUiStore } from "@/store/ui-store";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { projects, activeProjectId } = useProjectWorkspace();
-  const lazyMode = useUiStore((state) => state.lazyMode);
-  const toggleLazyMode = useUiStore((state) => state.toggleLazyMode);
   const activeProject = projects.find((project) => project.id === activeProjectId) ?? projects[0];
   const projectId = activeProject?.id ?? null;
   const navItems = [
     { href: getProjectRoute(projectId), label: "Today", icon: Gauge },
     { href: getProjectRoute(projectId, "/sections"), label: "Workspace", icon: FolderKanban },
+    { href: getProjectRoute(projectId, "/calendar"), label: "Calendar", icon: CalendarDays },
     { href: getProjectRoute(projectId, "/sprints"), label: "Sprint", icon: Rocket },
     { href: getProjectRoute(projectId, "/notifications"), label: "Alerts", icon: Bell },
     { href: getProjectRoute(projectId), label: "Notes", icon: MessageSquareText },
-    { href: getProjectRoute(projectId), label: "TTM", icon: Clock3 }
+    { href: getProjectRoute(projectId), label: "TTM", icon: Clock3 },
+    { href: "/account", label: "Account", icon: UserCircle2 }
   ] satisfies Array<{ href: string; label: string; icon: ComponentType<{ className?: string }> }>;
 
   return (
-    <div className="soft-grid mx-auto grid min-h-screen max-w-[1720px] gap-5 px-4 py-4 lg:grid-cols-[228px_minmax(0,1fr)] lg:gap-7 lg:px-6 lg:py-6">
-      <aside className="lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
-        <Card className="flex h-full flex-col gap-6 bg-ink text-surface">
-          <div className="space-y-5">
+    <div className="soft-grid mx-auto min-h-screen max-w-[1720px] px-4 py-4 lg:px-6 lg:py-6">
+      <aside className="lg:fixed lg:left-6 lg:top-4 lg:w-[228px] lg:z-20">
+        <Card className="flex flex-col gap-6 bg-ink text-surface">
+          <div className="flex-1 space-y-5">
             <div className="space-y-2">
               <p className="text-[11px] uppercase tracking-[0.28em] text-surface/55">Teranga Cockpit</p>
               <div>
@@ -53,32 +52,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
-            <button
-              type="button"
-              onClick={() => toggleLazyMode()}
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-surface/82 transition hover:bg-white/10"
-            >
-              <span className="block text-[11px] uppercase tracking-[0.18em] text-surface/52">
-                Interface Mode
-              </span>
-              <span className="mt-1 block font-medium">
-                {lazyMode ? "Lazy mode on" : "Lazy mode off"}
-              </span>
-            </button>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-surface/55">Active Project</p>
-            <p className="mt-2 text-base font-medium">{activeProject?.name ?? "Founder cockpit"}</p>
-            <p className="mt-1 text-sm text-surface/70">{activeProject?.stageLabel ?? "Demo flow"}</p>
-            <p className="mt-3 text-sm text-amber-100/90">
-              {activeProject?.warning ?? "Create a project and move through the steps."}
-            </p>
           </div>
         </Card>
       </aside>
 
-      <main className="min-w-0 pb-4">{children}</main>
+      <main className="min-w-0 pb-4 lg:ml-[255px]">{children}</main>
     </div>
   );
 }

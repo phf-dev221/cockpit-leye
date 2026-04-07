@@ -70,6 +70,15 @@ export interface ProjectNoteRecord {
   sectionKey: string;
 }
 
+interface BackendCalendarItem {
+  id: string | number;
+  source?: "manual" | "google" | null;
+  title: string;
+  item_type?: "focus" | "call" | "review" | "milestone" | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
 type RawProjectListResponse = ProjectListResponse | DemoProject[];
 type RawProjectResponse = ProjectResponse | DemoProject;
 type RawCollectionResponse<TItem> = CollectionResponse<TItem> | TItem[];
@@ -177,6 +186,26 @@ function normalizeNote(note: BackendNote): ProjectNoteRecord {
     title: note.title ?? "",
     content: note.content,
     sectionKey: note.section_key ?? ""
+  };
+}
+
+function normalizeCalendarItem(item: BackendCalendarItem) {
+  const startsAt = item.starts_at ?? null;
+  const startsAtDate = startsAt ? new Date(startsAt) : null;
+
+  return {
+    id: String(item.id),
+    dayLabel: startsAtDate
+      ? startsAtDate.toLocaleDateString("en-US", { weekday: "short" })
+      : new Date().toLocaleDateString("en-US", { weekday: "short" }),
+    timeLabel: startsAtDate
+      ? startsAtDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+      : "09:00",
+    title: item.title,
+    type: item.item_type ?? "focus",
+    startsAt: item.starts_at ?? undefined,
+    endsAt: item.ends_at ?? undefined,
+    source: item.source ?? undefined
   };
 }
 
@@ -487,5 +516,38 @@ export const projectApi = {
     return requestJson(`/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/notes/${noteId}`, {
       method: "DELETE"
     });
+  },
+
+  async createCalendarItem(
+    projectId: string,
+    payload: {
+      source?: "manual" | "google";
+      title: string;
+      item_type?: "focus" | "call" | "review" | "milestone";
+      starts_at: string;
+      ends_at?: string | null;
+      external_event_id?: string;
+    },
+    workspaceId?: string
+  ) {
+    const response = await requestJson<RawItemResponse<BackendCalendarItem>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/calendar-items`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }
+    );
+
+    const item = normalizeItemResponse(response).data;
+    return item ? normalizeCalendarItem(item) : null;
+  },
+
+  async deleteCalendarItem(projectId: string, itemId: string, workspaceId?: string) {
+    return requestJson(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/calendar-items/${itemId}`,
+      {
+        method: "DELETE"
+      }
+    );
   }
 };
