@@ -119,6 +119,12 @@ export function DemoWorkbench({
   });
   const [fileDraft, setFileDraft] = useState({ name: "", target: "", url: "" });
   const [sprintTaskDraft, setSprintTaskDraft] = useState("");
+  const [sprintDraft, setSprintDraft] = useState({
+    goal: "",
+    duration: "7 days",
+    review: "",
+    retrospective: ""
+  });
   const [calendarDraft, setCalendarDraft] = useState({ day: "Fri", time: "09:30", title: "" });
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
   const [draggedSprintTaskId, setDraggedSprintTaskId] = useState<string | null>(null);
@@ -166,6 +172,58 @@ export function DemoWorkbench({
   const selectedSectionId = useUiStore((state) => state.selectedSectionId);
   const setSelectedSectionId = useUiStore((state) => state.setSelectedSectionId);
   const setWorkspaceView = useUiStore((state) => state.setWorkspaceView);
+
+  useEffect(() => {
+    if (initialView) {
+      setWorkspaceView(initialView);
+    }
+  }, [initialView, setWorkspaceView]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(null), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!activeProject) {
+      return;
+    }
+
+    setSprintDraft({
+      goal: activeProject.sprint.goal || "",
+      duration: activeProject.sprint.duration || "7 days",
+      review: activeProject.sprint.review || "",
+      retrospective: activeProject.sprint.retrospective || ""
+    });
+  }, [activeProject]);
+
+  function pulse(message: string) {
+    setToast(message);
+    setActivity((current) => [message, ...current].slice(0, 6));
+  }
+
+  function guard(ok: boolean, message: string) {
+    if (!ok) setNotice(message);
+    return ok;
+  }
+
+  function focusNextStep() {
+    if (!activeProject) {
+      return;
+    }
+
+    const nextStep = getNextStep(activeProject);
+    jumpToStep(nextStep.id);
+    setWorkspaceView("capture");
+    pulse(`Focused ${nextStep.shortLabel}.`);
+  }
 
   if (!activeProject) {
     const isAuthIssue = (error ?? "").toLowerCase().includes("unauthenticated");
@@ -215,40 +273,6 @@ export function DemoWorkbench({
   const focusView =
     workspaceView === "strategy" || workspaceView === "records" || workspaceView === "sprint";
 
-  useEffect(() => {
-    if (initialView) {
-      setWorkspaceView(initialView);
-    }
-  }, [initialView, setWorkspaceView]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timeout = window.setTimeout(() => setToast(null), 2200);
-    return () => window.clearTimeout(timeout);
-  }, [toast]);
-
-  useEffect(() => {
-    if (!notice) return;
-    const timeout = window.setTimeout(() => setNotice(null), 2600);
-    return () => window.clearTimeout(timeout);
-  }, [notice]);
-
-  function pulse(message: string) {
-    setToast(message);
-    setActivity((current) => [message, ...current].slice(0, 6));
-  }
-
-  function guard(ok: boolean, message: string) {
-    if (!ok) setNotice(message);
-    return ok;
-  }
-
-  function focusNextStep() {
-    jumpToStep(nextStep.id);
-    setWorkspaceView("capture");
-    pulse(`Focused ${nextStep.shortLabel}.`);
-  }
-
   if (initialView === "sprint") {
     return (
       <div className="space-y-5 py-1">
@@ -260,27 +284,31 @@ export function DemoWorkbench({
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Sprint Workspace</p>
               <h1 className="mt-2 text-3xl font-semibold text-slate-950">{activeProject.name}</h1>
               <p className="mt-3 text-sm leading-7 text-slate-600">
-                A lighter sprint page focused on setup, tasks and movement only.
+                Create or update the current sprint, then manage the tasks below.
               </p>
             </div>
 
             <div className="space-y-4">
               <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Progress</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950">
-                  {activeProject.sprint.tasks.filter((task) => task.status === "Done").length}/{activeProject.sprint.tasks.length}
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Current sprint</p>
+                <p className="mt-2 text-lg font-semibold text-slate-950">
+                  {activeProject.sprint.goal || "No sprint saved yet"}
                 </p>
-                <p className="mt-2 text-sm text-slate-600">Tasks completed in this sprint.</p>
-              </div>
-
-              <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Current Goal</p>
-                <p className="mt-2 text-sm leading-6 text-slate-700">{activeProject.sprint.goal || "No sprint goal yet."}</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  {activeProject.sprint.goal
+                    ? `${activeProject.sprint.tasks.filter((task) => task.status === "Done").length}/${activeProject.sprint.tasks.length} tasks done`
+                    : "Set a goal and save to create the sprint."}
+                </p>
               </div>
 
               <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Duration</p>
-                <p className="mt-2 text-sm leading-6 text-slate-700">{activeProject.sprint.duration || "Not set"}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">{activeProject.sprint.duration || "7 days"}</p>
+              </div>
+
+              <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Review</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">{activeProject.sprint.review || "No review yet."}</p>
               </div>
             </div>
           </Card>
@@ -289,38 +317,54 @@ export function DemoWorkbench({
             <Card className="space-y-5 bg-white text-slate-950">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Sprint Setup</p>
-                <h2 className="mt-2 text-2xl font-semibold text-slate-950">Goal, review and retrospective</h2>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">Current sprint</h2>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="space-y-4">
                   <Input
-                    value={activeProject.sprint.goal}
-                    onChange={(event) => updateSprintField("goal", event.target.value)}
+                    value={sprintDraft.goal}
+                    onChange={(event) => setSprintDraft((current) => ({ ...current, goal: event.target.value }))}
                     placeholder="Sprint goal"
                     className="bg-slate-50"
                   />
                   <Input
-                    value={activeProject.sprint.duration}
-                    onChange={(event) => updateSprintField("duration", event.target.value)}
+                    value={sprintDraft.duration}
+                    onChange={(event) => setSprintDraft((current) => ({ ...current, duration: event.target.value }))}
                     placeholder="Sprint duration"
                     className="bg-slate-50"
                   />
                 </div>
                 <div className="space-y-4">
                   <Textarea
-                    value={activeProject.sprint.review}
-                    onChange={(event) => updateSprintField("review", event.target.value)}
+                    value={sprintDraft.review}
+                    onChange={(event) => setSprintDraft((current) => ({ ...current, review: event.target.value }))}
                     placeholder="Sprint review"
                     className="min-h-28 bg-slate-50"
                   />
                   <Textarea
-                    value={activeProject.sprint.retrospective}
-                    onChange={(event) => updateSprintField("retrospective", event.target.value)}
+                    value={sprintDraft.retrospective}
+                    onChange={(event) => setSprintDraft((current) => ({ ...current, retrospective: event.target.value }))}
                     placeholder="Sprint retrospective"
                     className="min-h-28 bg-slate-50"
                   />
                 </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  className="bg-slate-950 text-white hover:bg-slate-900"
+                  disabled={!sprintDraft.goal.trim()}
+                  onClick={async () => {
+                    await updateSprintField("goal", sprintDraft.goal);
+                    await updateSprintField("duration", sprintDraft.duration || "7 days");
+                    await updateSprintField("review", sprintDraft.review);
+                    await updateSprintField("retrospective", sprintDraft.retrospective);
+                    pulse(activeProject.sprint.goal ? "Sprint updated." : "Sprint created.");
+                  }}
+                >
+                  {activeProject.sprint.goal ? "Save sprint" : "Create sprint"}
+                </Button>
               </div>
             </Card>
 

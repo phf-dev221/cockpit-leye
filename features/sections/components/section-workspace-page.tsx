@@ -1,48 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { FileUp, MessageSquarePlus, Rocket, Trash2 } from "lucide-react";
+import { ChangeEvent, useMemo, useRef, useState } from "react";
+import { ExternalLink, FileUp, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SectionContainer } from "@/components/ui/section-container";
 import { Textarea } from "@/components/ui/textarea";
+import { getAuthSession } from "@/features/auth/services/auth-session";
 import { EmptyProjectState } from "@/features/projects/components/empty-project-state";
 import { useProjectWorkspace } from "@/features/projects/hooks/use-project-workspace";
 import { useSyncProjectRoute } from "@/features/projects/hooks/use-sync-project-route";
 import { useUiStore } from "@/store/ui-store";
 
-const sprintColumns = ["To Do", "In Progress", "Done"] as const;
-
 export function SectionWorkspacePage({ projectId }: { projectId: string }) {
   useSyncProjectRoute(projectId);
 
-  const {
-    activeProject,
-    updateCanvasValue,
-    addConversation,
-    removeConversation,
-    addFileRecord,
-    removeFileRecord,
-    addSprintTask,
-    moveSprintTask,
-    removeSprintTask,
-    updateSprintField
-  } = useProjectWorkspace();
+  const { activeProject, updateCanvasValue, addFileRecord, removeFileRecord } = useProjectWorkspace();
   const selectedSectionId = useUiStore((state) => state.selectedSectionId);
   const setSelectedSectionId = useUiStore((state) => state.setSelectedSectionId);
-
-  const [conversationDraft, setConversationDraft] = useState({
-    person: "",
-    context: "",
-    painPoints: "",
-    signals: "",
-    trustLevel: "Medium" as "Low" | "Medium" | "High",
-    learned: ""
-  });
-  const [fileDraft, setFileDraft] = useState({ name: "", url: "" });
-  const [sprintTaskDraft, setSprintTaskDraft] = useState("");
-  const [draggedSprintTaskId, setDraggedSprintTaskId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [fileDraft, setFileDraft] = useState({ name: "" });
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   if (!activeProject) {
     return <EmptyProjectState />;
@@ -50,340 +30,244 @@ export function SectionWorkspacePage({ projectId }: { projectId: string }) {
 
   const sections = activeProject.canvases;
   const selectedSection = sections.find((section) => section.id === selectedSectionId) ?? sections[0];
-  const conversations = useMemo(
-    () =>
-      activeProject.conversations.filter(
-        (conversation) =>
-          conversation.context.toLowerCase().includes(selectedSection.title.toLowerCase()) ||
-          conversation.context.toLowerCase().includes(selectedSection.id.toLowerCase())
-      ),
-    [activeProject, selectedSection.id, selectedSection.title]
-  );
   const files = useMemo(
     () =>
-      activeProject.files.filter(
-        (file) =>
-          file.target.toLowerCase().includes(selectedSection.title.toLowerCase()) ||
-          file.target.toLowerCase().includes(selectedSection.id.toLowerCase())
-      ),
+      activeProject.files.filter((file) => {
+        const target = file.target.toLowerCase();
+        return target === selectedSection.id.toLowerCase() || target === selectedSection.title.toLowerCase();
+      }),
     [activeProject.files, selectedSection.id, selectedSection.title]
   );
-  const sprint = activeProject.sprint;
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+      <SectionContainer
+        eyebrow="Sections"
+        title="Project sections"
+        description="Choose a section, edit its main note, and keep only the files that matter."
+        className="warm-panel"
+      >
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {sections.map((section) => {
+            const active = section.id === selectedSection.id;
+
+            return (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => setSelectedSectionId(section.id)}
+                className={`rounded-[1.2rem] border px-4 py-4 text-left transition ${
+                  active
+                    ? "border-pine bg-pine text-white"
+                    : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <p className="text-sm font-semibold">{section.title}</p>
+                <p className={`mt-2 text-xs leading-5 ${active ? "text-white/78" : "text-slate-500"}`}>
+                  {section.helper}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </SectionContainer>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <SectionContainer
-          eyebrow="Project Workspace"
-          title={activeProject.name}
-          description="Each section has its own notes, conversations, files and sprint work. Keep the dashboard for orientation, and do the real work here."
-          className="bg-white"
+          eyebrow="Current Section"
+          title={selectedSection.title}
+          description={selectedSection.prompt}
+          className="warm-panel"
+          action={
+            <div className="rounded-full bg-slate-100 px-4 py-2 text-xs text-slate-600">
+              {selectedSection.value.trim() ? "Saved" : "Empty"}
+            </div>
+          }
         >
-          <div className="space-y-2">
-            {sections.map((section) => {
-              const active = section.id === selectedSection.id;
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => setSelectedSectionId(section.id)}
-                  className={`w-full rounded-[1.35rem] border px-4 py-4 text-left transition ${
-                    active
-                      ? "border-primary bg-primary text-white"
-                      : "border-slate-200 bg-slate-50 text-slate-900 hover:bg-white"
-                  }`}
-                >
-                  <p className="text-sm font-semibold">{section.title}</p>
-                  <p className={`mt-2 text-xs leading-5 ${active ? "text-white/75" : "text-slate-500"}`}>
-                    {section.helper}
-                  </p>
-                </button>
-              );
-            })}
+          <div className="space-y-4">
+            <Textarea
+              value={selectedSection.value}
+              onChange={(event) => updateCanvasValue(selectedSection.id, event.target.value)}
+              placeholder={`Write the essential notes for ${selectedSection.title.toLowerCase()}.`}
+              className="min-h-[380px] bg-white"
+            />
           </div>
         </SectionContainer>
 
-        <div className="space-y-5">
-          <SectionContainer
-            eyebrow="Section"
-            title={selectedSection.title}
-            description={selectedSection.prompt}
-            className="bg-white"
-            action={
-              <div className="rounded-full bg-slate-100 px-4 py-2 text-xs text-slate-600">
-                {selectedSection.value.trim() ? "Filled" : "Needs content"}
-              </div>
-            }
-          >
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-              <div className="space-y-5">
-                <SectionContainer
-                  eyebrow="Notes"
-                  title="Working notes"
-                  description="Use this as the live document for the current section."
-                  className="bg-slate-50"
-                >
-                  <Textarea
-                    value={selectedSection.value}
-                    onChange={(event) => updateCanvasValue(selectedSection.id, event.target.value)}
-                    placeholder={`Write the current state of ${selectedSection.title.toLowerCase()} here.`}
-                    className="min-h-64"
-                  />
-                </SectionContainer>
+        <SectionContainer
+          eyebrow="Files"
+          title="Section files"
+          description="Upload a file or keep a link tied to this section."
+          className="warm-panel"
+        >
+          <div className="space-y-3">
+            <Input
+              value={fileDraft.name}
+              onChange={(event) => setFileDraft({ name: event.target.value })}
+              placeholder="File name"
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button
+                className="justify-between"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingFile}
+              >
+                {isUploadingFile ? "Uploading..." : "Upload file"}
+                <Upload className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                className="justify-between border-slate-200 bg-white text-slate-900"
+                onClick={() => {
+                  const fallbackName = fileDraft.name.trim();
 
-                <SectionContainer
-                  eyebrow="Files"
-                  title="Attachments"
-                  description="Cloudinary-ready placeholder flow. Keep only files relevant to this section."
-                  className="bg-slate-50"
-                >
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                    <Input
-                      value={fileDraft.name}
-                      onChange={(event) => setFileDraft((current) => ({ ...current, name: event.target.value }))}
-                      placeholder="File name"
-                    />
-                    <Input
-                      value={fileDraft.url}
-                      onChange={(event) => setFileDraft((current) => ({ ...current, url: event.target.value }))}
-                      placeholder="URL or upload placeholder"
-                    />
-                    <Button
-                      onClick={async () => {
-                        if (!fileDraft.name.trim()) return;
-                        addFileRecord(fileDraft.name.trim(), selectedSection.title, fileDraft.url.trim());
-                        setFileDraft({ name: "", url: "" });
-                      }}
-                    >
-                      <FileUp className="h-4 w-4" />
-                      Add file
-                    </Button>
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {files.length > 0 ? (
-                      files.map((file) => (
-                        <div key={file.id} className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-medium text-slate-900">{file.name}</p>
-                              <p className="mt-1 text-xs text-slate-500">{file.target}</p>
-                            </div>
-                            <button type="button" onClick={() => removeFileRecord(file.id)} className="text-slate-400 hover:text-rose-600">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="rounded-[1.25rem] border border-dashed border-slate-300 bg-white/70 p-5 text-sm text-slate-500">
-                        No files attached to this section yet.
-                      </div>
-                    )}
-                  </div>
-                </SectionContainer>
-              </div>
-
-              <div className="space-y-5">
-                <SectionContainer
-                  eyebrow="Conversations"
-                  title="Signals and calls"
-                  description="Quick-log only what matters for this section."
-                  className="bg-slate-50"
-                >
-                  <div className="space-y-3">
-                    <Input
-                      value={conversationDraft.person}
-                      onChange={(event) => setConversationDraft((current) => ({ ...current, person: event.target.value }))}
-                      placeholder="Who did you speak with?"
-                    />
-                    <Input
-                      value={conversationDraft.context}
-                      onChange={(event) =>
-                        setConversationDraft((current) => ({ ...current, context: event.target.value }))
-                      }
-                      placeholder={`Context, for example ${selectedSection.title} interview`}
-                    />
-                    <Textarea
-                      value={conversationDraft.painPoints}
-                      onChange={(event) =>
-                        setConversationDraft((current) => ({ ...current, painPoints: event.target.value }))
-                      }
-                      placeholder="Pain points"
-                      className="min-h-24"
-                    />
-                    <Textarea
-                      value={conversationDraft.learned}
-                      onChange={(event) =>
-                        setConversationDraft((current) => ({ ...current, learned: event.target.value }))
-                      }
-                      placeholder="What changed in your understanding?"
-                      className="min-h-24"
-                    />
-                    <Button
-                      className="w-full justify-between"
-                      onClick={() => {
-                        if (!conversationDraft.person.trim() || !conversationDraft.context.trim()) return;
-                        addConversation(
-                          conversationDraft.person,
-                          conversationDraft.context || selectedSection.title,
-                          conversationDraft.painPoints,
-                          conversationDraft.signals,
-                          conversationDraft.trustLevel,
-                          conversationDraft.learned
-                        );
-                        setConversationDraft({
-                          person: "",
-                          context: `${selectedSection.title} interview`,
-                          painPoints: "",
-                          signals: "",
-                          trustLevel: "Medium",
-                          learned: ""
-                        });
-                      }}
-                    >
-                      <span>Log conversation</span>
-                      <MessageSquarePlus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="space-y-3">
-                    {conversations.length > 0 ? (
-                      conversations.map((conversation) => (
-                        <div key={conversation.id} className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-medium text-slate-900">{conversation.person}</p>
-                              <p className="mt-1 text-xs text-slate-500">{conversation.context}</p>
-                            </div>
-                            <button type="button" onClick={() => removeConversation(conversation.id)} className="text-slate-400 hover:text-rose-600">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                          {conversation.learned ? (
-                            <p className="mt-3 text-sm leading-6 text-slate-700">{conversation.learned}</p>
-                          ) : null}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="rounded-[1.25rem] border border-dashed border-slate-300 bg-white/70 p-5 text-sm text-slate-500">
-                        No section conversations yet.
-                      </div>
-                    )}
-                  </div>
-                </SectionContainer>
-
-                <SectionContainer
-                  eyebrow="Sprint"
-                  title="Section sprint board"
-                  description="Strict kanban for the tasks tied to this project sprint."
-                  className="bg-slate-50"
-                  action={
-                    <div className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
-                      {sprint.tasks.filter((task) => task.status === "Done").length}/{sprint.tasks.length} done
-                    </div>
+                  if (!fallbackName) {
+                    setFileError("Add a file name before saving a link.");
+                    return;
                   }
-                >
-                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                    <Input
-                      value={sprintTaskDraft}
-                      onChange={(event) => setSprintTaskDraft(event.target.value)}
-                      placeholder={`Add a task for ${selectedSection.title}`}
-                    />
-                    <Button
-                      onClick={() => {
-                        if (!sprintTaskDraft.trim()) return;
-                        addSprintTask(sprintTaskDraft.trim());
-                        setSprintTaskDraft("");
-                      }}
-                    >
-                      <Rocket className="h-4 w-4" />
-                      Add task
-                    </Button>
-                  </div>
 
-                  <div className="grid gap-3 xl:grid-cols-3">
-                    {sprintColumns.map((column) => (
-                      <div
-                        key={column}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={() => {
-                          if (!draggedSprintTaskId) return;
-                          moveSprintTask(draggedSprintTaskId, column);
-                          setDraggedSprintTaskId(null);
-                        }}
-                        className="rounded-[1.3rem] border border-dashed border-slate-300 bg-white/80 p-3"
+                  void addFileRecord(fallbackName, selectedSection.id, `https://placeholder.local/${encodeURIComponent(fallbackName)}`);
+                  setFileDraft({ name: "" });
+                  setFileError(null);
+                }}
+                disabled={!fileDraft.name.trim() || isUploadingFile}
+              >
+                Save placeholder
+                <FileUp className="h-4 w-4" />
+              </Button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={(event) => void handleSectionFileUpload(event)}
+            />
+            {fileError ? <p className="text-sm text-rose-600">{fileError}</p> : null}
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {files.length ? (
+              files.map((file) => (
+                <div key={file.id} className="rounded-[1.2rem] border border-slate-200 bg-white px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-950">{file.name}</p>
+                      <p className="mt-1 text-xs text-slate-500">{selectedSection.title}</p>
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-xs text-pine hover:underline"
                       >
-                        <p className="mb-3 text-sm font-semibold text-slate-900">{column}</p>
-                        <div className="space-y-3">
-                          {sprint.tasks
-                            .filter((task) => task.status === column)
-                            .map((task) => (
-                              <div
-                                key={task.id}
-                                draggable
-                                onDragStart={() => setDraggedSprintTaskId(task.id)}
-                                onDragEnd={() => setDraggedSprintTaskId(null)}
-                                className="cursor-grab rounded-[1.1rem] border border-slate-200 bg-white p-4 active:cursor-grabbing"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <p className="text-sm font-medium text-slate-900">{task.title}</p>
-                                  <button type="button" onClick={() => removeSprintTask(task.id)} className="text-slate-400 hover:text-rose-600">
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  {sprintColumns.map((status) => (
-                                    <button
-                                      key={status}
-                                      type="button"
-                                      onClick={() => moveSprintTask(task.id, status)}
-                                      className={`rounded-full px-3 py-1 text-xs ${
-                                        status === task.status ? "bg-primary text-white" : "bg-slate-100 text-slate-600"
-                                      }`}
-                                    >
-                                      {status}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    ))}
+                        Open file
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFileRecord(file.id)}
+                      className="text-slate-400 transition hover:text-rose-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                </SectionContainer>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-[1.2rem] border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+                No file linked to this section yet.
               </div>
-            </div>
-          </SectionContainer>
-
-          <SectionContainer
-            eyebrow="Sprint Context"
-            title="Goal, review, retrospective"
-            description="Keep sprint metadata close to the section without opening a separate heavy dashboard."
-            className="bg-white"
-          >
-            <div className="grid gap-4 xl:grid-cols-3">
-              <Textarea
-                value={sprint.goal}
-                onChange={(event) => updateSprintField("goal", event.target.value)}
-                placeholder="Sprint goal"
-                className="min-h-28"
-              />
-              <Textarea
-                value={sprint.review}
-                onChange={(event) => updateSprintField("review", event.target.value)}
-                placeholder="Sprint review"
-                className="min-h-28"
-              />
-              <Textarea
-                value={sprint.retrospective}
-                onChange={(event) => updateSprintField("retrospective", event.target.value)}
-                placeholder="Retrospective"
-                className="min-h-28"
-              />
-            </div>
-          </SectionContainer>
-        </div>
+            )}
+          </div>
+        </SectionContainer>
       </section>
     </div>
   );
+
+  async function handleSectionFileUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setFileError(null);
+    setIsUploadingFile(true);
+
+    try {
+      const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
+      const token = getAuthSession()?.token ?? "";
+
+      const signatureResponse = await fetch(`${baseUrl}/api/files/cloudinary/signature`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include"
+      });
+
+      if (!signatureResponse.ok) {
+        throw new Error("The upload signature service is unavailable.");
+      }
+
+      const signaturePayload = (await signatureResponse.json()) as {
+        timestamp: number;
+        folder: string;
+        api_key: string;
+        cloud_name: string;
+        upload_preset?: string | null;
+        signature: string;
+      };
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", signaturePayload.api_key);
+      formData.append("timestamp", String(signaturePayload.timestamp));
+      formData.append("folder", signaturePayload.folder);
+      formData.append("signature", signaturePayload.signature);
+
+      if (signaturePayload.upload_preset) {
+        formData.append("upload_preset", signaturePayload.upload_preset);
+      }
+
+      const uploadResponse = await fetch(`https://api.cloudinary.com/v1_1/${signaturePayload.cloud_name}/auto/upload`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("File upload failed.");
+      }
+
+      const uploadPayload = (await uploadResponse.json()) as {
+        public_id?: string;
+        secure_url?: string;
+        resource_type?: string;
+        bytes?: number;
+        original_filename?: string;
+      };
+
+      if (!uploadPayload.public_id || !uploadPayload.secure_url) {
+        throw new Error("The uploaded file information is incomplete.");
+      }
+
+      await addFileRecord(
+        fileDraft.name.trim() || file.name || uploadPayload.original_filename || "Section file",
+        selectedSection.id,
+        uploadPayload.secure_url,
+        {
+          storageProvider: "cloudinary",
+          providerPublicId: uploadPayload.public_id,
+          mimeType: file.type || undefined,
+          resourceType: uploadPayload.resource_type,
+          fileSizeBytes: uploadPayload.bytes
+        }
+      );
+
+      setFileDraft({ name: "" });
+    } catch (caughtError) {
+      setFileError(caughtError instanceof Error ? caughtError.message : "Unable to upload the file.");
+    } finally {
+      setIsUploadingFile(false);
+      event.target.value = "";
+    }
+  }
 }

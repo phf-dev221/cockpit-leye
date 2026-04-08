@@ -15,7 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { projects, activeProjectId, activeProject, setActiveProject } = useProjectWorkspace();
   const projectId = activeProject?.id ?? activeProjectId ?? projects[0]?.id ?? null;
   const navItems = [
-    { href: getProjectRoute(projectId), label: "Today", icon: Gauge },
+    { href: "/today", label: "Today", icon: Gauge },
     { href: getProjectRoute(projectId, "/sections"), label: "Workspace", icon: FolderKanban },
     { href: getProjectRoute(projectId, "/calendar"), label: "Calendar", icon: CalendarDays },
     { href: getProjectRoute(projectId, "/notifications"), label: "Alerts", icon: Bell },
@@ -25,17 +25,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ] satisfies Array<{ href: string; label: string; icon: ComponentType<{ className?: string }> }>;
 
   return (
-    <div className="soft-grid mx-auto min-h-screen max-w-[1720px] px-4 py-4 lg:px-6 lg:py-6">
-      <aside className="lg:fixed lg:left-6 lg:top-4 lg:w-[240px] lg:z-20">
-        <Card className="flex flex-col gap-5 bg-ink text-surface">
-          <div className="space-y-4">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-surface/55">Teranga Cockpit</p>
-              <h1 className="mt-2 text-xl font-semibold sm:text-2xl">Personal Desk</h1>
+    <div className="soft-grid mx-auto min-h-screen max-w-[1720px] px-4 py-4 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:px-6 lg:py-6">
+      <aside className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start">
+        <Card className="flex flex-col gap-5 border-slate-200 bg-[#0f1720] text-slate-50 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="space-y-4 overflow-hidden">
+            <div className="overflow-hidden">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-surface/55 truncate">Teranga Cockpit</p>
+              <h1 className="mt-2 text-xl font-semibold sm:text-2xl truncate">Personal Desk</h1>
             </div>
 
-            <div className="rounded-[1.35rem] border border-white/8 bg-white/5 p-3">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-surface/48">Project</p>
+            <div className="rounded-[1.35rem] border border-white/10 bg-white/5 p-3 overflow-hidden">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300/80">Project</p>
               <p className="mt-2 truncate text-sm font-semibold text-surface">
                 {activeProject?.name ?? "No project yet"}
               </p>
@@ -44,10 +44,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <select
                   value={projectId ?? ""}
                   onChange={(event) => setActiveProject(event.target.value)}
-                  className="mt-3 w-full rounded-xl border border-white/10 bg-[#171311] px-3 py-2 text-sm text-surface outline-none"
+                  className="mt-3 w-full rounded-xl border border-white/10 bg-[#111927] px-3 py-2 text-sm text-white outline-none truncate"
                 >
                   {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
+                    <option key={project.id} value={project.id} className="truncate">
                       {project.name}
                     </option>
                   ))}
@@ -56,14 +56,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
               <Link
                 href="/projects/new"
-                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-medium text-ink transition hover:bg-surface"
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#f6f8fb] px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-white"
               >
                 <PlusCircle className="h-4 w-4" />
-                New project
+                Add project
               </Link>
             </div>
 
-            <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:block lg:space-y-1 lg:overflow-visible lg:px-0">
+            <nav className="space-y-1.5 overflow-y-auto">
               {navItems.map(({ href, label, icon: Icon }) => {
                 const isActive = pathname === href;
 
@@ -72,23 +72,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     key={label}
                     href={href}
                     className={cn(
-                      "flex min-w-fit items-center gap-3 rounded-2xl border px-3 py-2.5 text-sm transition lg:min-w-0 lg:px-4 lg:py-3",
+                      "flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition truncate",
                       isActive
-                        ? "border-white/12 bg-white text-ink"
-                        : "border-white/8 bg-white/5 text-surface/78 hover:bg-white/10 hover:text-surface lg:border-transparent lg:bg-transparent"
+                        ? "border-[#b7d6d0] bg-white text-slate-950 shadow-sm"
+                        : "border-transparent bg-transparent text-slate-200/88 hover:border-white/10 hover:bg-white/6 hover:text-white"
                     )}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span>{label}</span>
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{label}</span>
                   </Link>
                 );
               })}
             </nav>
           </div>
+
         </Card>
       </aside>
 
-      <main className="min-w-0 pb-4 lg:ml-[267px]">{children}</main>
+      <main className="mt-5 min-w-0 pb-4 lg:mt-0">{children}</main>
     </div>
   );
 }

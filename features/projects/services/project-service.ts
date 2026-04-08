@@ -1,6 +1,6 @@
 "use client";
 
-import { buildStageLabel, buildWarning, normalizeDemoProject } from "@/lib/data/demo-projects";
+import { buildStageLabel, buildWarning, normalizeDemoProject, DEMO_PROJECTS } from "@/lib/data/demo-projects";
 import type {
   DemoBoardLane,
   DemoBusinessSnapshot,
@@ -120,11 +120,28 @@ export const projectService = {
   },
 
   async loadSnapshot(): Promise<ProjectSnapshot> {
-    const response = await projectApi.listProjects();
+    try {
+      const response = await projectApi.listProjects();
 
+      if (!response.data || response.data.length === 0) {
+        return getDemoSnapshot();
+      }
+
+      return normalizeSnapshot({
+        projects: response.data ?? [],
+        activeProjectId: response.meta?.activeProjectId ?? response.data?.[0]?.id ?? null
+      });
+    } catch (error) {
+      console.warn("API unavailable, using demo data:", error);
+      return getDemoSnapshot();
+    }
+  },
+
+  getDemoSnapshot(): ProjectSnapshot {
+    const demoProjects = DEMO_PROJECTS.map((project) => computeProject(normalizeDemoProject(project)));
     return normalizeSnapshot({
-      projects: response.data ?? [],
-      activeProjectId: response.meta?.activeProjectId ?? response.data?.[0]?.id ?? null
+      projects: demoProjects,
+      activeProjectId: demoProjects[0]?.id ?? null
     });
   },
 
@@ -537,7 +554,20 @@ export const projectService = {
     );
   },
 
-  async addFileRecord(snapshot: ProjectSnapshot, name: string, target: string, url: string): Promise<ProjectSnapshot> {
+  async addFileRecord(
+    snapshot: ProjectSnapshot,
+    name: string,
+    target: string,
+    url: string,
+    metadata?: {
+      storageProvider?: string;
+      providerPublicId?: string;
+      mimeType?: string;
+      resourceType?: string;
+      fileSizeBytes?: number;
+      thumbnailUrl?: string;
+    }
+  ): Promise<ProjectSnapshot> {
     const activeProject = getActiveProject(snapshot);
     const trimmedName = name.trim();
     const trimmedTarget = target.trim();
@@ -549,11 +579,14 @@ export const projectService = {
 
     const createdFile = await projectApi.createFileRecord(activeProject.id, {
       section_key: trimmedTarget,
-      storage_provider: "manual",
-      provider_public_id: `manual-${Date.now()}`,
+      storage_provider: metadata?.storageProvider ?? "manual",
+      provider_public_id: metadata?.providerPublicId ?? `manual-${Date.now()}`,
       file_name: trimmedName,
-      resource_type: "raw",
-      secure_url: normalizedUrl
+      mime_type: metadata?.mimeType,
+      resource_type: metadata?.resourceType ?? "raw",
+      file_size_bytes: metadata?.fileSizeBytes,
+      secure_url: normalizedUrl,
+      thumbnail_url: metadata?.thumbnailUrl
     });
 
     if (!createdFile) {

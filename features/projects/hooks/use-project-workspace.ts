@@ -54,7 +54,19 @@ interface ProjectWorkspaceContextValue {
     learned: string
   ) => Promise<ProjectSnapshot>;
   removeConversation: (conversationId: string) => Promise<ProjectSnapshot>;
-  addFileRecord: (name: string, target: string, url: string) => Promise<ProjectSnapshot>;
+  addFileRecord: (
+    name: string,
+    target: string,
+    url: string,
+    metadata?: {
+      storageProvider?: string;
+      providerPublicId?: string;
+      mimeType?: string;
+      resourceType?: string;
+      fileSizeBytes?: number;
+      thumbnailUrl?: string;
+    }
+  ) => Promise<ProjectSnapshot>;
   removeFileRecord: (fileId: string) => Promise<ProjectSnapshot>;
   updateSprintField: (field: "goal" | "duration" | "review" | "retrospective", value: string) => Promise<ProjectSnapshot>;
   addSprintTask: (title: string) => Promise<ProjectSnapshot>;
@@ -210,7 +222,7 @@ export function ProjectWorkspaceProvider({ children }: { children: ReactNode }) 
       removeNotification: (notificationId: string) => removeNotification(notificationId),
       addConversation,
       removeConversation: (conversationId: string) => removeConversation(conversationId),
-      addFileRecord: (name: string, target: string, url: string) => addFileRecord(name, target, url),
+      addFileRecord: (name: string, target: string, url: string, metadata) => addFileRecord(name, target, url, metadata),
       removeFileRecord: (fileId: string) => removeFileRecord(fileId),
       updateSprintField: (field, fieldValue) => updateSprintField(field, fieldValue),
       addSprintTask: (title: string) => addSprintTask(title),

@@ -31,11 +31,13 @@ export async function requestJson<T>(path: string, init?: RequestInit): Promise<
     ...init,
     headers: {
       "Content-Type": "application/json",
+      "Accept": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {})
     },
     credentials: "include",
-    cache: "no-store"
+    cache: "no-store",
+    mode: "cors"
   });
 
   if (response.status === 204) {

@@ -13,8 +13,11 @@ export function slugifyProjectName(value: string) {
 }
 
 export function getProjectRoute(projectId?: string | null, suffix = "") {
-  if (!projectId) {
-    return "/projects/new";
+  if (!projectId || projectId === "current") {
+    if (!suffix) {
+      return "/today";
+    }
+    return "/projects/new" + suffix;
   }
 
   return `/projects/${projectId}${suffix}`;

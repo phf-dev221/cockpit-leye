@@ -16,17 +16,17 @@ const inviteRoleOptions = [
   {
     value: "admin",
     label: "Admin",
-    description: "Manage le workspace, les membres et les projets."
+    description: "Manage the workspace, members, and projects."
   },
   {
     value: "editor",
     label: "Editor",
-    description: "Contribue aux projets et modifie le contenu."
+    description: "Contribute to projects and edit content."
   },
   {
     value: "viewer",
     label: "Viewer",
-    description: "Consulte le workspace sans modifier le contenu."
+    description: "View the workspace without editing content."
   }
 ] as const;
 
@@ -40,7 +40,7 @@ export function AccountSettingsPage() {
     fullName: session?.user?.full_name ?? "",
     email: session?.user?.email ?? "",
     timezone: session?.user?.timezone ?? "Africa/Dakar",
-    locale: session?.user?.locale ?? "fr",
+    locale: session?.user?.locale ?? "en",
     avatarUrl: session?.user?.avatar_url ?? ""
   });
   const [workspaceForm, setWorkspaceForm] = useState({
@@ -89,13 +89,13 @@ export function AccountSettingsPage() {
           fullName: user.full_name ?? "",
           email: user.email ?? "",
           timezone: user.timezone ?? "Africa/Dakar",
-          locale: user.locale ?? "fr",
+          locale: user.locale ?? "en",
           avatarUrl: user.avatar_url ?? ""
         });
       })
       .catch((caughtError) => {
         if (!cancelled) {
-          setError(caughtError instanceof Error ? caughtError.message : "Impossible de charger le compte.");
+          setError(caughtError instanceof Error ? caughtError.message : "Unable to load the account.");
         }
       });
 
@@ -116,7 +116,7 @@ export function AccountSettingsPage() {
       })
       .catch((caughtError) => {
         if (!cancelled) {
-          setGoogleError(caughtError instanceof Error ? caughtError.message : "Impossible de charger Google Calendar.");
+          setGoogleError(caughtError instanceof Error ? caughtError.message : "Unable to load Google Calendar.");
         }
       })
       .finally(() => {
@@ -148,7 +148,7 @@ export function AccountSettingsPage() {
         router.replace("/account");
       })
       .catch((caughtError) => {
-        setGoogleError(caughtError instanceof Error ? caughtError.message : "Impossible de connecter Google Calendar.");
+        setGoogleError(caughtError instanceof Error ? caughtError.message : "Unable to connect Google Calendar.");
       })
       .finally(() => {
         setIsGoogleConnecting(false);
@@ -169,9 +169,9 @@ export function AccountSettingsPage() {
         avatar_url: form.avatarUrl.trim() || null
       });
 
-      setMessage("Compte mis a jour.");
+      setMessage("Account updated.");
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Impossible de mettre a jour le compte.");
+      setError(caughtError instanceof Error ? caughtError.message : "Unable to update the account.");
     } finally {
       setIsSaving(false);
     }
@@ -198,7 +198,7 @@ export function AccountSettingsPage() {
       });
 
       if (!signatureResponse.ok) {
-        throw new Error("Le service d'upload avatar n'est pas disponible.");
+        throw new Error("The avatar upload service is not available.");
       }
 
       const signaturePayload = (await signatureResponse.json()) as {
@@ -230,13 +230,13 @@ export function AccountSettingsPage() {
       );
 
       if (!uploadResponse.ok) {
-        throw new Error("Impossible d'uploader la photo.");
+        throw new Error("Unable to upload the photo.");
       }
 
       const uploadPayload = (await uploadResponse.json()) as { secure_url?: string };
 
       if (!uploadPayload.secure_url) {
-        throw new Error("La photo n'a pas ete retournee apres upload.");
+        throw new Error("The photo was not returned after upload.");
       }
 
       setForm((current) => ({
@@ -244,7 +244,7 @@ export function AccountSettingsPage() {
         avatarUrl: uploadPayload.secure_url ?? ""
       }));
     } catch (caughtError) {
-      setAvatarError(caughtError instanceof Error ? caughtError.message : "Impossible d'uploader la photo.");
+      setAvatarError(caughtError instanceof Error ? caughtError.message : "Unable to upload the photo.");
     } finally {
       setIsUploadingAvatar(false);
       event.target.value = "";
@@ -263,11 +263,11 @@ export function AccountSettingsPage() {
         default_currency: "XOF"
       });
 
-      setWorkspaceMessage(`Workspace "${workspace.name}" cree.`);
+      setWorkspaceMessage(`Workspace "${workspace.name}" created.`);
       setWorkspaceForm({ name: "" });
       await refresh();
     } catch (caughtError) {
-      setWorkspaceError(caughtError instanceof Error ? caughtError.message : "Impossible de creer le workspace.");
+      setWorkspaceError(caughtError instanceof Error ? caughtError.message : "Unable to create the workspace.");
     } finally {
       setIsCreatingWorkspace(false);
     }
@@ -275,7 +275,7 @@ export function AccountSettingsPage() {
 
   async function handleInvite() {
     if (!activeWorkspace?.id) {
-      setInviteError("Aucun workspace actif.");
+      setInviteError("No active workspace.");
       return;
     }
 
@@ -290,11 +290,11 @@ export function AccountSettingsPage() {
         role: inviteForm.role
       });
 
-      setInviteMessage(`Invitation creee pour ${inviteForm.email.trim()}.`);
+      setInviteMessage(`Invitation created for ${inviteForm.email.trim()}.`);
       setInviteToken(response.invitation_token ?? null);
       setInviteForm((current) => ({ ...current, email: "" }));
     } catch (caughtError) {
-      setInviteError(caughtError instanceof Error ? caughtError.message : "Impossible de creer l'invitation.");
+      setInviteError(caughtError instanceof Error ? caughtError.message : "Unable to create the invitation.");
     } finally {
       setIsInviting(false);
     }
@@ -310,11 +310,11 @@ export function AccountSettingsPage() {
         token: acceptInviteForm.token.trim()
       });
 
-      setAcceptMessage("Invitation acceptee et workspace ajoute au compte.");
+      setAcceptMessage("Invitation accepted and workspace added to the account.");
       setAcceptInviteForm({ token: "" });
       await refresh();
     } catch (caughtError) {
-      setAcceptError(caughtError instanceof Error ? caughtError.message : "Impossible d'accepter l'invitation.");
+      setAcceptError(caughtError instanceof Error ? caughtError.message : "Unable to accept the invitation.");
     } finally {
       setIsAcceptingInvitation(false);
     }
@@ -349,7 +349,7 @@ export function AccountSettingsPage() {
       const status = await googleCalendarApi.getStatus();
       setGoogleStatus(status);
     } catch (caughtError) {
-      setGoogleError(caughtError instanceof Error ? caughtError.message : "Impossible de connecter Google Calendar.");
+      setGoogleError(caughtError instanceof Error ? caughtError.message : "Unable to connect Google Calendar.");
     } finally {
       setIsGoogleConnecting(false);
     }
@@ -368,7 +368,7 @@ export function AccountSettingsPage() {
       const status = await googleCalendarApi.getStatus();
       setGoogleStatus(status);
     } catch (caughtError) {
-      setGoogleError(caughtError instanceof Error ? caughtError.message : "Impossible de synchroniser Google Calendar.");
+      setGoogleError(caughtError instanceof Error ? caughtError.message : "Unable to sync Google Calendar.");
     } finally {
       setIsGoogleSyncing(false);
     }
@@ -378,28 +378,28 @@ export function AccountSettingsPage() {
     <div className="mx-auto max-w-5xl space-y-5">
       <div>
         <p className="text-xs uppercase tracking-[0.22em] text-ink/45">Account Settings</p>
-        <h1 className="mt-2 text-3xl font-semibold text-ink">Mon compte</h1>
+        <h1 className="mt-2 text-3xl font-semibold text-ink">My account</h1>
         <p className="mt-2 text-sm leading-7 text-ink/65">
-          Mettez a jour vos informations de connexion et de profil sans toucher aux donnees workspace.
+          Update your login and profile information without touching workspace data.
         </p>
         <div className="mt-4">
           <Button variant="ghost" className="border border-ink/10 bg-white text-ink" onClick={() => void handleLogout()} disabled={isLoggingOut}>
-            {isLoggingOut ? "Deconnexion..." : "Se deconnecter"}
+            {isLoggingOut ? "Signing out..." : "Sign out"}
           </Button>
         </div>
       </div>
 
       <SectionContainer
         eyebrow="User Profile"
-        title="Informations personnelles"
-        description="Ce formulaire met a jour le compte connecte utilise par le cockpit."
+        title="Personal information"
+        description="This form updates the signed-in account used by the cockpit."
         className="bg-white"
       >
         <div className="grid gap-4 md:grid-cols-2">
           <Input
             value={form.fullName}
             onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))}
-            placeholder="Nom complet"
+            placeholder="Full name"
           />
           <Input
             value={form.email}
@@ -430,9 +430,9 @@ export function AccountSettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-ink">Photo de profil</p>
+                  <p className="text-sm font-medium text-ink">Profile photo</p>
                   <p className="text-sm leading-6 text-ink/62">
-                    Upload ton image directement au lieu de coller une URL.
+                    Upload your image directly instead of pasting a URL.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -441,7 +441,7 @@ export function AccountSettingsPage() {
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploadingAvatar}
                     >
-                      {isUploadingAvatar ? "Upload..." : "Uploader une photo"}
+                      {isUploadingAvatar ? "Uploading..." : "Upload photo"}
                     </Button>
                     {form.avatarUrl ? (
                       <Button
@@ -450,7 +450,7 @@ export function AccountSettingsPage() {
                         onClick={() => setForm((current) => ({ ...current, avatarUrl: "" }))}
                         disabled={isUploadingAvatar}
                       >
-                        Retirer la photo
+                        Remove photo
                       </Button>
                     ) : null}
                   </div>
@@ -484,21 +484,21 @@ export function AccountSettingsPage() {
       <SectionContainer
         eyebrow="Secured Access"
         title="Create Access"
-        description="Ces actions sont disponibles uniquement apres connexion. Cree un workspace ou genere un acces invite pour le workspace actif."
+        description="These actions are available only after sign-in. Create a workspace or generate an invitation for the active workspace."
         className="bg-white"
       >
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-4 rounded-3xl border border-ink/10 p-5">
             <div>
-              <p className="text-sm font-medium text-ink">Nouveau workspace</p>
+              <p className="text-sm font-medium text-ink">New workspace</p>
               <p className="mt-1 text-sm leading-6 text-ink/65">
-                Utilise cette action pour creer un nouvel espace de travail depuis le dashboard.
+                Use this action to create a new workspace from the dashboard.
               </p>
             </div>
             <Input
               value={workspaceForm.name}
               onChange={(event) => setWorkspaceForm({ name: event.target.value })}
-              placeholder="Nom du workspace"
+              placeholder="Workspace name"
             />
             {workspaceError ? <p className="text-sm text-rose-600">{workspaceError}</p> : null}
             {workspaceMessage ? <p className="text-sm text-emerald-700">{workspaceMessage}</p> : null}
@@ -506,25 +506,25 @@ export function AccountSettingsPage() {
               onClick={() => void handleCreateWorkspace()}
               disabled={isCreatingWorkspace || !workspaceForm.name.trim()}
             >
-              {isCreatingWorkspace ? "Creation..." : "Create access"}
+              {isCreatingWorkspace ? "Creating..." : "Create workspace"}
             </Button>
           </div>
 
           <div className="space-y-4 rounded-3xl border border-ink/10 p-5">
             <div>
-              <p className="text-sm font-medium text-ink">Invitation securisee</p>
+              <p className="text-sm font-medium text-ink">Secure invitation</p>
               <p className="mt-1 text-sm leading-6 text-ink/65">
-                Invite un membre dans le workspace actif{activeWorkspace ? ` : ${activeWorkspace.name}` : ""}.
+                Invite a member into the active workspace{activeWorkspace ? `: ${activeWorkspace.name}` : ""}.
               </p>
             </div>
             <Input
               value={inviteForm.email}
               onChange={(event) => setInviteForm((current) => ({ ...current, email: event.target.value }))}
-              placeholder="Email du membre"
+              placeholder="Member email"
               type="email"
             />
             <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-ink/45">Role d'acces</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-ink/45">Access role</p>
               <div className="grid gap-3">
                 {inviteRoleOptions.map((roleOption) => {
                   const selected = inviteForm.role === roleOption.value;
@@ -564,14 +564,14 @@ export function AccountSettingsPage() {
             {inviteMessage ? <p className="text-sm text-emerald-700">{inviteMessage}</p> : null}
             {inviteToken ? (
               <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
-                Token d'invitation : <span className="break-all font-mono">{inviteToken}</span>
+                Invitation token: <span className="break-all font-mono">{inviteToken}</span>
               </div>
             ) : null}
             <Button
               onClick={() => void handleInvite()}
               disabled={isInviting || !inviteForm.email.trim() || !activeWorkspace?.id}
             >
-              {isInviting ? "Invitation..." : "Generate invitation"}
+              {isInviting ? "Generating..." : "Generate invitation"}
             </Button>
           </div>
         </div>
@@ -579,8 +579,8 @@ export function AccountSettingsPage() {
 
       <SectionContainer
         eyebrow="Secured Access"
-        title="Invitation"
-        description="Accepte ici un token d'invitation depuis un compte deja connecte pour ajouter un workspace a ton acces."
+        title="Accept invitation"
+        description="Use an invitation token from an already signed-in account to add a workspace to your access."
         className="bg-white"
       >
         <div className="space-y-4">
@@ -596,7 +596,7 @@ export function AccountSettingsPage() {
               onClick={() => void handleAcceptInvitation()}
               disabled={isAcceptingInvitation || !acceptInviteForm.token.trim()}
             >
-              {isAcceptingInvitation ? "Validation..." : "Accept invitation"}
+              {isAcceptingInvitation ? "Accepting..." : "Accept invitation"}
             </Button>
           </div>
         </div>
@@ -605,7 +605,7 @@ export function AccountSettingsPage() {
       <SectionContainer
         eyebrow="Calendar"
         title="Google Calendar"
-        description="Connecte ton Google Calendar, lance une synchronisation, puis retrouve ici les evenements du jour."
+        description="Connect your Google Calendar, run a sync, then find today's events here."
         className="bg-white"
       >
         <div className="space-y-4">
@@ -614,24 +614,24 @@ export function AccountSettingsPage() {
               <div>
                 <p className="text-sm font-medium text-ink">
                   {isGoogleLoading
-                    ? "Chargement..."
+                    ? "Loading..."
                     : googleStatus?.calendar_label
-                      ? `Connecte a ${googleStatus.calendar_label}`
-                      : "Aucune connexion Google Calendar"}
+                      ? `Connected to ${googleStatus.calendar_label}`
+                      : "No Google Calendar connection"}
                 </p>
                 <p className="mt-1 text-sm leading-6 text-ink/62">
                   {googleStatus?.last_synced_at
-                    ? `Derniere synchronisation: ${new Date(googleStatus.last_synced_at).toLocaleString()}`
-                    : "Connecte ton calendrier pour recuperer tes evenements du jour."}
+                    ? `Last synced: ${new Date(googleStatus.last_synced_at).toLocaleString()}`
+                    : "Connect your calendar to pull in today's events."}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button onClick={() => void handleGoogleConnect()} disabled={isGoogleConnecting || isGoogleLoading}>
-                  {isGoogleConnecting ? "Connexion..." : googleStatus?.connection_id ? "Reconnecter Google" : "Connecter Google Calendar"}
+                  {isGoogleConnecting ? "Connecting..." : googleStatus?.connection_id ? "Reconnect Google" : "Connect Google Calendar"}
                 </Button>
                 {googleStatus?.connection_id ? (
                   <Button variant="ghost" className="border border-ink/10 bg-white text-ink" onClick={() => void handleGoogleSync()} disabled={isGoogleSyncing}>
-                    {isGoogleSyncing ? "Sync..." : "Synchroniser maintenant"}
+                    {isGoogleSyncing ? "Syncing..." : "Sync now"}
                   </Button>
                 ) : null}
               </div>
@@ -684,7 +684,7 @@ export function AccountSettingsPage() {
               );
             }).length === 0 ? (
               <div className="rounded-[1.2rem] border border-dashed border-ink/10 bg-[#faf7f1] p-4 text-sm text-ink/62">
-                Aucun evenement Google Calendar trouve pour aujourd'hui.
+                No Google Calendar events found for today.
               </div>
             ) : null}
           </div>

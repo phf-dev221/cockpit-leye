@@ -1,34 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Bell, CalendarDays, FolderPlus, Plus, Rocket, TimerReset, Trash2 } from "lucide-react";
+import { Bell, CalendarDays, FolderPlus, Plus, Rocket, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { SectionContainer } from "@/components/ui/section-container";
 import { EmptyProjectState } from "@/features/projects/components/empty-project-state";
 import { useProjectWorkspace } from "@/features/projects/hooks/use-project-workspace";
 import { useSyncProjectRoute } from "@/features/projects/hooks/use-sync-project-route";
 import { getProjectRoute } from "@/lib/utils";
 
-function getNextStep(project: NonNullable<ReturnType<typeof useProjectWorkspace>["activeProject"]>) {
-  return project.steps.find((step) => !step.value.trim()) ?? project.steps[0];
-}
-
 export function TodayDeskPage({ projectId }: { projectId: string }) {
   useSyncProjectRoute(projectId);
-  const { activeProject, advanceDay, addFocusItem, removeFocusItem, updateFocusItem, scheduleCalendarItem, removeCalendarItem } = useProjectWorkspace();
+  const { activeProject, scheduleCalendarItem, removeCalendarItem } = useProjectWorkspace();
+
   if (!activeProject) {
     return <EmptyProjectState />;
   }
 
-  const nextStep = getNextStep(activeProject);
   const unreadNotifications = activeProject.notifications.filter((notification) => !notification.read).length;
   const openReminders = activeProject.reminders.filter((reminder) => !reminder.done).length;
   const doneTasks = activeProject.quickTasks.filter((task) => task.done).length;
-  const [focusDrafts, setFocusDrafts] = useState<Record<string, { title: string; value: string }>>({});
-  const [newFocus, setNewFocus] = useState({ title: "", value: "" });
   const [calendarDraft, setCalendarDraft] = useState({
     title: "",
     date: new Date().toISOString().slice(0, 10),
@@ -52,79 +45,42 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
     return item.dayLabel === new Date().toLocaleDateString("en-US", { weekday: "short" });
   });
 
-  useEffect(() => {
-    setFocusDrafts(
-      Object.fromEntries(
-        activeProject.focusItems.map((item) => [item.id, { title: item.title, value: item.value }])
-      )
-    );
-  }, [activeProject.focusItems]);
-
   return (
     <div className="space-y-5">
       <section className="space-y-5">
         <SectionContainer
           eyebrow="Today"
           title={activeProject.name}
-          description="Use this page for orientation only. Heavy workflows now live on dedicated pages."
+          description="Open the right workspace fast and handle only what needs attention now."
           className="bg-white text-slate-950"
           action={
-            <div className="flex flex-wrap gap-2">
-              <Button variant="ghost" className="bg-slate-100 text-slate-950" onClick={() => advanceDay()}>
-                <TimerReset className="h-4 w-4" />
-                Simulate one more day
-              </Button>
-              <Link
-                href={getProjectRoute(activeProject.id, "/sections")}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-slate-900"
-              >
-                <Rocket className="h-4 w-4 text-white" />
-                <span className="text-white">Open workspace</span>
-              </Link>
-            </div>
+            <Link
+              href={getProjectRoute(activeProject.id, "/sections")}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-medium text-white transition-transform duration-200 hover:-translate-y-0.5 hover:bg-slate-900"
+            >
+              <Rocket className="h-4 w-4 text-white" />
+              <span className="text-white">Open workspace</span>
+            </Link>
           }
         >
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Next step</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">{nextStep.title}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">{nextStep.helper}</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Alerts</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">{unreadNotifications}</p>
             </div>
-            <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Stage</p>
-              <p className="mt-2 text-lg font-semibold text-slate-950">{activeProject.stageLabel}</p>
-              <p className="mt-2 text-sm text-slate-700">Day {activeProject.dayCount}</p>
+            <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Reminders</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">{openReminders}</p>
             </div>
-            <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Current push</p>
-              <p className="mt-2 text-sm leading-6 text-slate-700">{activeProject.warning}</p>
+            <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Tasks done</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-950">{doneTasks}</p>
             </div>
           </div>
         </SectionContainer>
-
-        <div className="flex gap-3">
-          <Card className="metric-tile min-w-0 flex-1 rounded-[1.35rem] px-4 py-3 text-slate-950">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-600">Alerts</p>
-              <p className="text-2xl font-semibold text-slate-950">{unreadNotifications}</p>
-            </div>
-          </Card>
-          <Card className="metric-tile min-w-0 flex-1 rounded-[1.35rem] px-4 py-3 text-slate-950">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-600">Reminders</p>
-              <p className="text-2xl font-semibold text-slate-950">{openReminders}</p>
-            </div>
-          </Card>
-          <Card className="metric-tile min-w-0 flex-1 rounded-[1.35rem] px-4 py-3 text-slate-950">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-600">Tasks done</p>
-              <p className="text-2xl font-semibold text-slate-950">{doneTasks}</p>
-            </div>
-          </Card>
-        </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <section className="grid gap-5">
         <SectionContainer
           eyebrow="Quick Actions"
           title="Jump where the work happens"
@@ -170,106 +126,17 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
             </Link>
           </div>
         </SectionContainer>
-
-        <SectionContainer
-          eyebrow="Today Focus"
-          title="Keep only what matters"
-          description="Edit these cards directly here instead of keeping static helper text."
-          className="bg-white text-slate-950"
-        >
-          <div className="space-y-3">
-            {activeProject.focusItems.map((item) => {
-              const draft = focusDrafts[item.id] ?? { title: item.title, value: item.value };
-
-              return (
-                <div key={item.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4">
-                  <div className="grid gap-3">
-                    <input
-                      value={draft.title}
-                      onChange={(event) =>
-                        setFocusDrafts((current) => ({
-                          ...current,
-                          [item.id]: { ...draft, title: event.target.value }
-                        }))
-                      }
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-950 outline-none transition focus:border-slate-400"
-                      placeholder="Card title"
-                    />
-                    <textarea
-                      value={draft.value}
-                      onChange={(event) =>
-                        setFocusDrafts((current) => ({
-                          ...current,
-                          [item.id]: { ...draft, value: event.target.value }
-                        }))
-                      }
-                      className="min-h-[88px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-800 outline-none transition focus:border-slate-400"
-                      placeholder="What should this focus card say?"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="secondary"
-                        onClick={() => updateFocusItem(item.id, draft.title, draft.value)}
-                      >
-                        Save changes
-                      </Button>
-                      <Button variant="ghost" onClick={() => removeFocusItem(item.id)}>
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            <div className="rounded-[1rem] border border-dashed border-slate-300 bg-white p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Add focus card</p>
-              <div className="mt-3 grid gap-3">
-                <input
-                  value={newFocus.title}
-                  onChange={(event) => setNewFocus((current) => ({ ...current, title: event.target.value }))}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-950 outline-none transition focus:border-slate-400"
-                  placeholder="Example: Blocker to remove"
-                />
-                <textarea
-                  value={newFocus.value}
-                  onChange={(event) => setNewFocus((current) => ({ ...current, value: event.target.value }))}
-                  className="min-h-[88px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-800 outline-none transition focus:border-slate-400"
-                  placeholder="Write the note, next move, or reminder you want to keep in focus."
-                />
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={() => {
-                      addFocusItem(newFocus.title, newFocus.value);
-                      setNewFocus({ title: "", value: "" });
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add card
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => setNewFocus({ title: nextStep.title, value: nextStep.helper })}
-                  >
-                    Use current step
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </SectionContainer>
       </section>
 
       <SectionContainer
         eyebrow="Calendar"
-        title="Planifier et voir les evenements du jour"
-        description="Ajoute un evenement manuel maintenant. Les evenements Google synchronises apparaitront aussi ici dans le flux du projet."
+        title="Plan and review today's events"
+        description="Add a manual event now. Synced Google events will also appear here in the project flow."
         className="bg-white text-slate-950"
       >
         <div className="grid gap-5 xl:grid-cols-[380px_minmax(0,1fr)]">
           <div className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-950">Nouvel evenement</p>
+            <p className="text-sm font-semibold text-slate-950">New event</p>
             <div className="mt-4 grid gap-3">
               <input
                 value={calendarDraft.title}
@@ -324,7 +191,7 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
                 disabled={!calendarDraft.title.trim() || !calendarDraft.date || !calendarDraft.startTime}
               >
                 <Plus className="h-4 w-4" />
-                Ajouter l'evenement
+                Add event
               </Button>
             </div>
           </div>
@@ -345,7 +212,8 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
                           : ""}
                       </p>
                       <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-500">
-                        {item.type} {item.source ? `• ${item.source}` : ""}
+                        {item.type}
+                        {item.source ? ` • ${item.source}` : ""}
                       </p>
                     </div>
                     <Button variant="ghost" onClick={() => void removeCalendarItem(item.id)}>
@@ -356,7 +224,7 @@ export function TodayDeskPage({ projectId }: { projectId: string }) {
               ))
             ) : (
               <div className="rounded-[1.2rem] border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">
-                Aucun evenement pour aujourd'hui.
+                No events for today.
               </div>
             )}
           </div>

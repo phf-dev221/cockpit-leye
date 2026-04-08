@@ -381,3 +381,24 @@ export function createDemoProject(
 
 export const seededDemoProjects: DemoProject[] = [];
 
+const DEMO_PROJECT_DATA: Array<Pick<DemoProject, "id" | "name" | "dayCount" | "currentStepId" | "founderNote">> = [
+  {
+    id: "teranga-start",
+    name: "Teranga Startup",
+    dayCount: 12,
+    currentStepId: "validate-urgency",
+    founderNote: "Building a founder cockpit for African entrepreneurs"
+  },
+  {
+    id: "side-project",
+    name: "Side Project",
+    dayCount: 3,
+    currentStepId: "target-user",
+    founderNote: ""
+  }
+];
+
+export const DEMO_PROJECTS: DemoProject[] = DEMO_PROJECT_DATA.map((data) =>
+  normalizeDemoProject(data)
+);
+
