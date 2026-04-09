@@ -124,7 +124,7 @@ export const projectService = {
       const response = await projectApi.listProjects();
 
       if (!response.data || response.data.length === 0) {
-        return getDemoSnapshot();
+        return this.getDemoSnapshot();
       }
 
       return normalizeSnapshot({
@@ -133,7 +133,7 @@ export const projectService = {
       });
     } catch (error) {
       console.warn("API unavailable, using demo data:", error);
-      return getDemoSnapshot();
+      return this.getDemoSnapshot();
     }
   },
 
