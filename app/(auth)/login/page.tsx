@@ -2,13 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Sparkles, Users, Mail, LogOut } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { authApi } from "@/features/auth/services/auth-api";
 import { hasAuthSession, clearAuthSession, getAuthSession } from "@/features/auth/services/auth-session";
-import { Card } from "@/components/ui/card";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,7 +11,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [inviteForm, setInviteForm] = useState({ email: "" });
 
   const isAuthenticated = hasAuthSession();
   const session = getAuthSession();
@@ -27,12 +21,11 @@ export default function LoginPage() {
       await authApi.login(loginForm);
       router.push("/today");
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Une erreur est survenue.");
+      setError(caughtError instanceof Error ? caughtError.message : "Erreur de connexion");
     }
   }
 
   async function handleLogout() {
-    setError(null);
     clearAuthSession();
     router.refresh();
   }
@@ -40,125 +33,125 @@ export default function LoginPage() {
   function runAction(action: () => Promise<void>) {
     startTransition(async () => {
       try { await action(); } 
-      catch (caughtError) { setError(caughtError instanceof Error ? caughtError.message : "Une erreur est survenue."); }
+      catch (caughtError) { setError(caughtError instanceof Error ? caughtError.message : "Erreur"); }
     });
   }
 
-  return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4 py-6 md:py-10">
-      <div className="mx-auto max-w-lg md:max-w-4xl">
-        <div className="mb-6 text-center md:mb-10">
-          <h1 className="text-3xl font-bold text-white md:text-5xl">Teranga Cockpit</h1>
-          <p className="mt-1 text-sm text-slate-400 md:text-lg">Founder intelligence system</p>
+  if (isAuthenticated && session?.user) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-rose-500 via-purple-500 to-cyan-500 p-1">
+            <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+              <span className="text-3xl">⚔️</span>
+            </div>
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-1">{session.user.full_name || session.user.email}</h2>
+          <p className="text-slate-500 text-sm mb-8">Bienvenue</p>
+          <div className="flex gap-4 justify-center">
+            <button 
+              onClick={() => router.push("/today")}
+              className="px-8 py-3 bg-gradient-to-r from-rose-500 to-purple-600 text-white font-bold rounded-lg hover:opacity-90 transition"
+            >
+              Entrer
+            </button>
+            <button 
+              onClick={() => runAction(handleLogout)}
+              className="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:border-rose-500 hover:text-rose-500 transition"
+            >
+              Quitter
+            </button>
+          </div>
         </div>
+      </main>
+    );
+  }
 
-        {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400 md:rounded-2xl">
-            {error}
-          </div>
-        )}
-
-        {isAuthenticated && session?.user ? (
-          <Card className="border-emerald-500/30 bg-emerald-500/10 p-4 md:p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
-                <Users className="h-5 w-5 text-emerald-400" />
-              </div>
-              <div>
-                <p className="font-medium text-emerald-300">Session active</p>
-                <p className="text-sm text-emerald-400/70">{session.user.email}</p>
-              </div>
+  return (
+    <main className="min-h-screen flex bg-white">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-rose-900 via-slate-900 to-rose-950">
+        <div className="absolute inset-0 bg-[url('https://static.vecteezy.com/system/resources/previews/048/667/284/non_2x/tanjiro-sun-breathing-demon-slayer-free-vector.jpg')] bg-cover bg-center opacity-40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-900/80 to-slate-900/60" />
+        
+        <div className="relative z-10 flex flex-col justify-center items-center w-full">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-rose-500/20 blur-3xl" />
+          
+          <div className="relative">
+            <div className="w-72 h-72 rounded-full border-4 border-white/20 overflow-hidden shadow-2xl shadow-black/50">
+              <img 
+                src="https://static.vecteezy.com/system/resources/previews/048/667/284/non_2x/tanjiro-sun-breathing-demon-slayer-free-vector.jpg" 
+                alt="Tanjiro" 
+                className="w-full h-full object-cover"
+              />
             </div>
-            <div className="flex flex-col gap-2 md:flex-row">
-              <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => router.push("/today")}>
-                Accéder au cockpit
-              </Button>
-              <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-800" onClick={() => runAction(handleLogout)}>
-                <LogOut className="mr-2 h-4 w-4 md:hidden" />
-                <span className="hidden md:inline">Déconnexion</span>
-              </Button>
-            </div>
-          </Card>
-        ) : (
-          <div className="space-y-4 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
-            <Card className="border-slate-700/50 bg-slate-800/50 p-4 md:p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-500/20">
-                  <Sparkles className="h-4 w-4 text-blue-400" />
-                </div>
-                <h2 className="text-lg font-semibold text-white">Créer mon espace</h2>
-              </div>
-              <p className="text-sm text-slate-400 mb-3">Lancez votre cockpit personnel pour structurer vos projets.</p>
-              <div className="space-y-2">
-                <Input
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
-                  placeholder="Votre email"
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
-                />
-                <Input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm((c) => ({ ...c, password: e.target.value }))}
-                  placeholder="Mot de passe"
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
-                />
-                <Button
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                  disabled={!loginForm.email.trim() || !loginForm.password.trim() || isPending}
-                  onClick={() => runAction(handleLogin)}
-                >
-                  {isPending ? "Création..." : "Créer mon espace"}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </Card>
-
-            <Card className="border-slate-700/50 bg-slate-800/50 p-4 md:p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/20">
-                  <Mail className="h-4 w-4 text-amber-400" />
-                </div>
-                <h2 className="text-lg font-semibold text-white">Inviter quelqu'un</h2>
-              </div>
-              <p className="text-sm text-slate-400 mb-3">Générez un lien d'invitation temporaire.</p>
-              <div className="space-y-2">
-                <Input
-                  type="email"
-                  value={inviteForm.email}
-                  onChange={(e) => setInviteForm((c) => ({ ...c, email: e.target.value }))}
-                  placeholder="Email de l'invité"
-                  className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
-                />
-                <Button
-                  className="w-full bg-slate-700 hover:bg-slate-600 text-white"
-                  disabled={!inviteForm.email.trim() || isPending}
-                  onClick={() => alert("Lien d'invitation généré! Enviez-le à " + inviteForm.email)}
-                >
-                  Générer le lien
-                </Button>
-              </div>
-            </Card>
-
-            <div className="md:col-span-2">
-              <Card className="border-slate-600/50 bg-slate-800/30 p-4 md:p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20">
-                    <span className="text-emerald-400">🔒</span>
-                  </div>
-                  <span className="font-semibold text-white">Accès sécurisé</span>
-                </div>
-                <ul className="grid grid-cols-1 gap-2 text-sm text-slate-400 md:grid-cols-2">
-                  <li className="flex items-center gap-2">✓ Tokens temporaires avec expiration</li>
-                  <li className="flex items-center gap-2">✓ Authentification sécurisée</li>
-                  <li className="flex items-center gap-2">✓ Protection sessions multiples</li>
-                  <li className="flex items-center gap-2">✓ Workspace privé</li>
-                </ul>
-              </Card>
+            <div className="absolute -bottom-2 -right-2 w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-xl">🔥</span>
             </div>
           </div>
-        )}
+        </div>
+      </div>
+
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16">
+        <div className="w-full max-w-md">
+          <div className="lg:hidden text-center mb-10">
+            <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden shadow-lg">
+              <img 
+                src="https://static.vecteezy.com/system/resources/previews/048/667/284/non_2x/tanjiro-sun-breathing-demon-slayer-free-vector.jpg" 
+                alt="Tanjiro" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <h1 className="text-3xl font-bold text-slate-900">TERANGA</h1>
+            <p className="text-rose-500">Cockpit</p>
+          </div>
+
+          <div className="hidden lg:block mb-10">
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">Welcome back</h2>
+            <p className="text-slate-500 text-lg">Sign in to access your cockpit</p>
+          </div>
+
+          {error && (
+            <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+              <input
+                type="email"
+                value={loginForm.email}
+                onChange={(e) => setLoginForm((c) => ({ ...c, email: e.target.value }))}
+                placeholder="your@email.com"
+                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-rose-500 focus:ring-2 focus:ring-rose-100 focus:outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+              <input
+                type="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm((c) => ({ ...c, password: e.target.value }))}
+                placeholder="••••••••"
+                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-rose-500 focus:ring-2 focus:ring-rose-100 focus:outline-none transition-all"
+              />
+            </div>
+            <button
+              onClick={() => runAction(handleLogin)}
+              disabled={!loginForm.email.trim() || !loginForm.password.trim() || isPending}
+              className="w-full py-4 bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold rounded-xl hover:from-rose-600 hover:to-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-lg hover:shadow-rose-200 hover:-translate-y-0.5"
+            >
+              {isPending ? "Signing in..." : "Sign in"}
+            </button>
+          </div>
+
+          <div className="mt-10 flex justify-center gap-2">
+            <span className="text-slate-400 text-xs">🔒 Sécurisé</span>
+            <span className="text-slate-300">·</span>
+            <span className="text-slate-400 text-xs">Confidentialité</span>
+          </div>
+        </div>
       </div>
     </main>
   );

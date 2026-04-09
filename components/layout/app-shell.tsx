@@ -27,14 +27,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="soft-grid mx-auto min-h-screen max-w-[1720px] px-4 py-4 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:px-6 lg:py-6">
       <aside className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start">
-        <Card className="flex flex-col gap-5 border-slate-200 bg-[#0f1720] text-slate-50 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
-          <div className="space-y-4 overflow-hidden">
-            <div className="overflow-hidden">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-surface/55 truncate">Teranga Cockpit</p>
-              <h1 className="mt-2 text-xl font-semibold sm:text-2xl truncate">Personal Desk</h1>
+        <Card className="flex flex-col h-full border-slate-200 bg-[#0f1720] text-slate-50 lg:max-h-[calc(100vh-3rem)]">
+          <div className="flex flex-col gap-4 p-4 min-h-0 flex-1">
+            <div className="flex-shrink-0">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-surface/55">Teranga Cockpit</p>
+              <h1 className="mt-2 text-xl font-semibold sm:text-2xl">Personal Desk</h1>
             </div>
 
-            <div className="rounded-[1.35rem] border border-white/10 bg-white/5 p-3 overflow-hidden">
+            <div className="flex-shrink-0 rounded-[1.35rem] border border-white/10 bg-white/5 p-3">
               <p className="text-[11px] uppercase tracking-[0.22em] text-slate-300/80">Project</p>
               <p className="mt-2 truncate text-sm font-semibold text-surface">
                 {activeProject?.name ?? "No project yet"}
@@ -44,10 +44,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <select
                   value={projectId ?? ""}
                   onChange={(event) => setActiveProject(event.target.value)}
-                  className="mt-3 w-full rounded-xl border border-white/10 bg-[#111927] px-3 py-2 text-sm text-white outline-none truncate"
+                  className="mt-3 w-full rounded-xl border border-white/10 bg-[#111927] px-3 py-2 text-sm text-white outline-none"
                 >
                   {projects.map((project) => (
-                    <option key={project.id} value={project.id} className="truncate">
+                    <option key={project.id} value={project.id}>
                       {project.name}
                     </option>
                   ))}
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
 
-            <nav className="space-y-1.5 overflow-y-auto">
+            <nav className="flex-1 space-y-1.5 overflow-y-auto min-h-0">
               {navItems.map(({ href, label, icon: Icon }) => {
                 const isActive = pathname === href;
 
@@ -72,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     key={label}
                     href={href}
                     className={cn(
-                      "flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition truncate",
+                      "flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition",
                       isActive
                         ? "border-[#b7d6d0] bg-white text-slate-950 shadow-sm"
                         : "border-transparent bg-transparent text-slate-200/88 hover:border-white/10 hover:bg-white/6 hover:text-white"
@@ -85,7 +85,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               })}
             </nav>
           </div>
-
         </Card>
       </aside>
 
