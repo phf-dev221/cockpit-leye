@@ -1,47 +1,47 @@
-# name: CI/CD Pipeline next.js Project
+name: CI/CD Pipeline next.js Project
 
-# on:
-#   push:
-#     branches:
-#       - main
-#   pull_request:
-#     branches:
-#       - main
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
-# jobs:
-#   build-test:
-#     runs-on: ubuntu-latest
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
 
-#     steps:
-#       - name: Checkout Code
-#         uses: actions/checkout@v3
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-#       - name: Install Node.js
-#         uses: actions/setup-node@v3
-#         with:
-#           node-version: 18
-#           cache: 'npm'
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
 
-#       - name: Install Dependencies
-#         run: npm install
+      - name: Install Dependencies
+        run: npm install
 
-#       - name: Run Linting
-#         run: npm run lint
+      - name: Run Linting
+        run: npm run lint
 
-#       - name: Run Tests
-#         run: npm test
+      - name: Run Tests
+        run: npm test
 
-#       - name: Build Project
-#         run: npm run build
+      - name: Build Project
+        run: npm run build
 
-#   deploy:
-#     needs: build-test
-#     runs-on: ubuntu-latest
+  deploy:
+    needs: build-test
+    runs-on: ubuntu-latest
 
-#     steps:
-#       - name: Deploy to Vercel
-#         uses: amondnet/vercel-action@v25
-#         with:
-#           vercel-token: ${{ secrets.VERCEL_TOKEN }}
-#           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-#           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
