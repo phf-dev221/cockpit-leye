@@ -45,10 +45,12 @@ export function useWorkspaces() {
     }
   }, []);
 
+  const activeWorkspace = workspaces.find((workspace) => workspace.id.toString() === activeWorkspaceId) ?? null;
+
   return {
     workspaces,
     activeWorkspaceId,
-    activeWorkspace: workspaces.find((workspace) => workspace.id.toString() === activeWorkspaceId) ?? null,
+    activeWorkspace,
     isLoading,
     error,
     refresh,

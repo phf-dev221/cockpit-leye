@@ -121,10 +121,13 @@ export const projectService = {
 
   async loadSnapshot(): Promise<ProjectSnapshot> {
     try {
+      console.log("Loading snapshot from API...");
       const response = await projectApi.listProjects();
+      console.log("API response:", response);
 
       if (!response.data || response.data.length === 0) {
-        return this.getDemoSnapshot();
+        console.log("No projects in response, returning empty");
+        return { projects: [], activeProjectId: null };
       }
 
       return normalizeSnapshot({
@@ -132,8 +135,9 @@ export const projectService = {
         activeProjectId: response.meta?.activeProjectId ?? response.data?.[0]?.id ?? null
       });
     } catch (error) {
-      console.warn("API unavailable, using demo data:", error);
-      return this.getDemoSnapshot();
+      console.error("loadSnapshot error:", error);
+      console.warn("API unavailable:", error);
+      return { projects: [], activeProjectId: null };
     }
   },
 
@@ -175,6 +179,11 @@ export const projectService = {
     });
 
     const createdProject = response.data ? computeProject(normalizeDemoProject(response.data)) : null;
+
+    if (!createdProject) {
+      return this.refreshSnapshot(snapshot);
+    }
+
     const projects = createdProject ? [createdProject, ...snapshot.projects] : snapshot.projects;
 
     return normalizeSnapshot({

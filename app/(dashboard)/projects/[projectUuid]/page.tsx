@@ -3,8 +3,8 @@ import { TodayDeskPage } from "@/features/projects/components/today-desk-page";
 export default async function ProjectPage({
   params
 }: {
-  params: Promise<{ projectId: string }>;
+  params: Promise<{ projectUuid: string }>;
 }) {
-  const { projectId } = await params;
-  return <TodayDeskPage projectId={projectId} />;
+  const { projectUuid } = await params;
+  return <TodayDeskPage projectId={projectUuid} />;
 }

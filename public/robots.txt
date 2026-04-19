@@ -1,0 +1,80 @@
+User-agent: *
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: claude-bot
+Disallow: /
+
+User-agent: OAI-SearchBot
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Deepseek
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: Twitterbot
+Disallow: /
+
+User-agent: Slackbot
+Disallow: /
+
+User-agent: Discordbot
+Disallow: /
+
+User-agent: TelegramBot
+Disallow: /
+
+User-agent: WhatsApp
+Disallow: /
+
+User-agent: SignalBot
+Disallow: /
+
+User-agent: iAsk
+Disallow: /
+
+User-agent: Exabot
+Disallow: /
+
+User-agent: Mediavine
+Disallow: /
+
+User-agent: Scribot
+Disallow: /
+
+User-agent: YouBot
+Disallow: /
+
+User-agent: Spider
+Disallow: /
+
+User-agent: Bot
+Disallow: /
+
+User-agent: Crawler
+Disallow: /
+
+User-agent: Scanner
+Disallow: /

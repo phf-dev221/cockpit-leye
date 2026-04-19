@@ -173,45 +173,10 @@ function defaultCanvases(): DemoCanvas[] {
       value: ""
     },
     {
-      id: "customer-discovery",
-      title: "Customer Discovery",
-      prompt: "What are people doing today, and what words do they use to describe the pain?",
-      helper: "Capture concrete quotes and current habits.",
-      value: ""
-    },
-    {
       id: "icp",
       title: "ICP",
       prompt: "Who is the sharpest first customer profile for this product?",
       helper: "Role, context, urgency, team size, and buying trigger.",
-      value: ""
-    },
-    {
-      id: "tam",
-      title: "TAM / Opportunity",
-      prompt: "How large is the market opportunity, and what is the realistic starting wedge?",
-      helper: "Keep it practical: TAM, SAM, SOM, and first niche.",
-      value: ""
-    },
-    {
-      id: "conversation-framework",
-      title: "Conversation Framework",
-      prompt: "How will you start discovery calls, build trust, and surface the real problem?",
-      helper: "Think opening, trust, probing, and what to listen for.",
-      value: ""
-    },
-    {
-      id: "business-model-canvas",
-      title: "Business Model Canvas",
-      prompt: "How do value, channels, revenue, costs, and partners fit together?",
-      helper: "Write only the blocks that matter for the current stage.",
-      value: ""
-    },
-    {
-      id: "go-to-market",
-      title: "Go-To-Market",
-      prompt: "What is the lightest path to get the first users, proof, and momentum?",
-      helper: "Channel, message, proof asset, and first conversion step.",
       value: ""
     }
   ];
@@ -247,9 +212,15 @@ function defaultFiles(): DemoFileRecord[] {
 }
 
 function defaultSprint(): DemoSprintRecord {
+  const today = new Date();
+  const startDate = today.toISOString().split('T')[0];
+  const endDate = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
   return {
     goal: "Validate the problem and sharpen the first user profile.",
     duration: "5 days",
+    startDate,
+    endDate,
     review: "Urgency is real. Messaging still needs simplification.",
     retrospective: "Calls happened late in the week. Start them earlier next sprint.",
     tasks: [
@@ -293,8 +264,9 @@ export function normalizeDemoProject(project: Partial<DemoProject> & Pick<DemoPr
   const incomingCanvasValues = Object.fromEntries(
     (project.canvases ?? []).map((canvas) => [canvas.id, canvas.value])
   ) as Partial<Record<DemoCanvasKey, string>>;
-  const projectWithDefaults: DemoProject = {
+const projectWithDefaults: DemoProject = {
     id: project.id,
+    uuid: project.uuid ?? crypto.randomUUID(),
     name: project.name,
     createdAt: project.createdAt ?? new Date().toISOString(),
     dayCount: project.dayCount ?? 1,

@@ -1,695 +1,756 @@
 "use client";
 
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SectionContainer } from "@/components/ui/section-container";
 import { authApi } from "@/features/auth/services/auth-api";
-import { getAuthSession } from "@/features/auth/services/auth-session";
+import { getAuthSession, clearAuthSession } from "@/features/auth/services/auth-session";
 import { googleCalendarApi, type GoogleCalendarStatus } from "@/features/integrations/services/google-calendar-api";
 import { useWorkspaces } from "@/features/workspaces/hooks/use-workspaces";
-import { workspaceApi } from "@/features/workspaces/services/workspace-api";
+import { workspaceApi, type WorkspaceMember } from "@/features/workspaces/services/workspace-api";
 
-const inviteRoleOptions = [
-  {
-    value: "admin",
-    label: "Admin",
-    description: "Manage the workspace, members, and projects."
-  },
-  {
-    value: "editor",
-    label: "Editor",
-    description: "Contribute to projects and edit content."
-  },
-  {
-    value: "viewer",
-    label: "Viewer",
-    description: "View the workspace without editing content."
-  }
-] as const;
+type Tab = "profile" | "team" | "workspaces" | "calendar" | "security";
+
+const tabs: { id: Tab; label: string }[] = [
+  { id: "profile", label: "Profile" },
+  { id: "team", label: "Team" },
+  { id: "workspaces", label: "Workspaces" },
+  { id: "calendar", label: "Calendar" },
+  { id: "security", label: "Security" },
+];
+
+const roleOptions = [
+  { value: "owner", label: "Owner", desc: "Full control - can invite & remove members" },
+  { value: "admin", label: "Admin", desc: "Manage workspace, members & projects" },
+  { value: "editor", label: "Editor", desc: "Contribute & edit content" },
+  { value: "viewer", label: "Viewer", desc: "View without editing" },
+];
+
+function LoadingSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6">
+      <div className="h-4 w-32 bg-slate-200 rounded" />
+      <div className="h-8 w-48 bg-slate-200 rounded" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="h-12 bg-slate-200 rounded-xl" />
+        <div className="h-12 bg-slate-200 rounded-xl" />
+      </div>
+    </div>
+  );
+}
 
 export function AccountSettingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const session = getAuthSession();
-  const { activeWorkspace, refresh } = useWorkspaces();
+  const { activeWorkspace, workspaces, activateWorkspace, refresh } = useWorkspaces();
+  
+  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const [form, setForm] = useState({
-    fullName: session?.user?.full_name ?? "",
-    email: session?.user?.email ?? "",
-    timezone: session?.user?.timezone ?? "Africa/Dakar",
-    locale: session?.user?.locale ?? "en",
-    avatarUrl: session?.user?.avatar_url ?? ""
-  });
-  const [workspaceForm, setWorkspaceForm] = useState({
-    name: ""
-  });
-  const [inviteForm, setInviteForm] = useState({
+    fullName: "",
     email: "",
-    role: "editor"
+    timezone: "Africa/Dakar",
+    locale: "en",
+    avatarUrl: "",
   });
-  const [acceptInviteForm, setAcceptInviteForm] = useState({
-    token: ""
-  });
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
-  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
-  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
-  const [inviteMessage, setInviteMessage] = useState<string | null>(null);
-  const [inviteToken, setInviteToken] = useState<string | null>(null);
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [isInviting, setIsInviting] = useState(false);
-  const [acceptMessage, setAcceptMessage] = useState<string | null>(null);
-  const [acceptError, setAcceptError] = useState<string | null>(null);
-  const [isAcceptingInvitation, setIsAcceptingInvitation] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [avatarError, setAvatarError] = useState<string | null>(null);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const [inviteForm, setInviteForm] = useState({ email: "", role: "editor" });
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [createUserForm, setCreateUserForm] = useState({ fullName: "", email: "", password: "", role: "editor", workspaceId: "" });
+  const [workspaceForm, setWorkspaceForm] = useState({ name: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  const [formLoaded, setFormLoaded] = useState(false);
+
+  useEffect(() => {
+    if (workspaces.length > 0 && !createUserForm.workspaceId) {
+      setCreateUserForm(prev => ({
+        ...prev,
+        workspaceId: activeWorkspace?.id?.toString() || workspaces[0].id.toString()
+      }));
+    }
+  }, [workspaces, activeWorkspace]);
+
+  useEffect(() => {
+    if (session?.user && !formLoaded) {
+      setForm({
+        fullName: session.user.full_name || "",
+        email: session.user.email || "",
+        timezone: session.user.timezone || "Africa/Dakar",
+        locale: session.user.locale || "en",
+        avatarUrl: session.user.avatar_url || "",
+      });
+      setFormLoaded(true);
+    }
+  }, [session, formLoaded]);
+
+  const validatePassword = (password: string): string[] => {
+    const errors: string[] = [];
+    if (password.length < 8) errors.push("At least 8 characters");
+    if (!/[A-Z]/.test(password)) errors.push("One uppercase letter");
+    if (!/[a-z]/.test(password)) errors.push("One lowercase letter");
+    if (!/[0-9]/.test(password)) errors.push("One number");
+    if (!/[^A-Za-z0-9]/.test(password)) errors.push("One special character");
+    return errors;
+  };
+
+  const checkPasswordRequirement = (password: string, requirement: string): boolean => {
+    if (requirement === "At least 8 characters") return password.length >= 8;
+    if (requirement === "One uppercase letter") return /[A-Z]/.test(password);
+    if (requirement === "One lowercase letter") return /[a-z]/.test(password);
+    if (requirement === "One number") return /[0-9]/.test(password);
+    if (requirement === "One special character") return /[^A-Za-z0-9]/.test(password);
+    return false;
+  };
+  
   const [googleStatus, setGoogleStatus] = useState<GoogleCalendarStatus | null>(null);
-  const [googleError, setGoogleError] = useState<string | null>(null);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(true);
-  const [isGoogleSyncing, setIsGoogleSyncing] = useState(false);
-  const [isGoogleConnecting, setIsGoogleConnecting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(true);
+  const [googleConnecting, setGoogleConnecting] = useState(false);
+
+  const loadMembers = useCallback(async () => {
+    if (!activeWorkspace?.id) return;
+    try {
+      const members = await workspaceApi.getMembers(String(activeWorkspace.id));
+      setMembers(members);
+    } catch (e) {
+      console.error("Error loading members:", e);
+    }
+  }, [activeWorkspace?.id]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    void authApi
-      .me()
-      .then((user) => {
-        if (cancelled || !user) {
-          return;
-        }
-
-        setForm({
-          fullName: user.full_name ?? "",
-          email: user.email ?? "",
-          timezone: user.timezone ?? "Africa/Dakar",
-          locale: user.locale ?? "en",
-          avatarUrl: user.avatar_url ?? ""
-        });
-      })
-      .catch((caughtError) => {
-        if (!cancelled) {
-          setError(caughtError instanceof Error ? caughtError.message : "Unable to load the account.");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void googleCalendarApi
-      .getStatus()
-      .then((status) => {
-        if (!cancelled) {
-          setGoogleStatus(status);
-        }
-      })
-      .catch((caughtError) => {
-        if (!cancelled) {
-          setGoogleError(caughtError instanceof Error ? caughtError.message : "Unable to load Google Calendar.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsGoogleLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    loadMembers();
+  }, [loadMembers]);
 
   useEffect(() => {
     const code = searchParams.get("code");
+    if (!code) return;
 
-    if (!code) {
-      return;
-    }
-
-    setIsGoogleConnecting(true);
-    setGoogleError(null);
-
-    void googleCalendarApi
-      .connect({ code, workspace_id: activeWorkspace?.id ? String(activeWorkspace.id) : null })
+    setGoogleConnecting(true);
+    googleCalendarApi.connect({ code, workspace_id: activeWorkspace?.id ? String(activeWorkspace.id) : null })
       .then(() => googleCalendarApi.getStatus())
-      .then((status) => {
-        setGoogleStatus(status);
-        router.replace("/account");
-      })
-      .catch((caughtError) => {
-        setGoogleError(caughtError instanceof Error ? caughtError.message : "Unable to connect Google Calendar.");
-      })
+      .then(setGoogleStatus)
+      .catch(console.error)
       .finally(() => {
-        setIsGoogleConnecting(false);
+        setGoogleConnecting(false);
+        router.replace("/account");
       });
-  }, [activeWorkspace?.id, router, searchParams]);
+  }, [searchParams, activeWorkspace?.id, router]);
 
-  async function handleSave() {
-    setIsSaving(true);
-    setError(null);
+  async function handleSaveProfile() {
+    setSaving(true);
     setMessage(null);
-
     try {
       await authApi.updateProfile({
         full_name: form.fullName.trim(),
         email: form.email.trim(),
         timezone: form.timezone.trim() || null,
         locale: form.locale.trim() || null,
-        avatar_url: form.avatarUrl.trim() || null
+        avatar_url: form.avatarUrl.trim() || null,
       });
-
-      setMessage("Account updated.");
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to update the account.");
+      setMessage({ type: "success", text: "Profile updated successfully!" });
+    } catch (e) {
+      setMessage({ type: "error", text: e instanceof Error ? e.message : "Failed to update profile" });
     } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleAvatarUpload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    setAvatarError(null);
-    setIsUploadingAvatar(true);
-
-    try {
-      const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
-      const token = getAuthSession()?.token ?? "";
-
-      const signatureResponse = await fetch(`${baseUrl}/api/files/cloudinary/signature`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        credentials: "include"
-      });
-
-      if (!signatureResponse.ok) {
-        throw new Error("The avatar upload service is not available.");
-      }
-
-      const signaturePayload = (await signatureResponse.json()) as {
-        timestamp: number;
-        folder: string;
-        api_key: string;
-        cloud_name: string;
-        upload_preset?: string | null;
-        signature: string;
-      };
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("api_key", signaturePayload.api_key);
-      formData.append("timestamp", String(signaturePayload.timestamp));
-      formData.append("folder", signaturePayload.folder);
-      formData.append("signature", signaturePayload.signature);
-
-      if (signaturePayload.upload_preset) {
-        formData.append("upload_preset", signaturePayload.upload_preset);
-      }
-
-      const uploadResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${signaturePayload.cloud_name}/image/upload`,
-        {
-          method: "POST",
-          body: formData
-        }
-      );
-
-      if (!uploadResponse.ok) {
-        throw new Error("Unable to upload the photo.");
-      }
-
-      const uploadPayload = (await uploadResponse.json()) as { secure_url?: string };
-
-      if (!uploadPayload.secure_url) {
-        throw new Error("The photo was not returned after upload.");
-      }
-
-      setForm((current) => ({
-        ...current,
-        avatarUrl: uploadPayload.secure_url ?? ""
-      }));
-    } catch (caughtError) {
-      setAvatarError(caughtError instanceof Error ? caughtError.message : "Unable to upload the photo.");
-    } finally {
-      setIsUploadingAvatar(false);
-      event.target.value = "";
+      setSaving(false);
     }
   }
 
   async function handleCreateWorkspace() {
-    setIsCreatingWorkspace(true);
-    setWorkspaceError(null);
-    setWorkspaceMessage(null);
-
+    if (!workspaceForm.name.trim()) return;
+    
+    setSaving(true);
+    setMessage(null);
     try {
-      const workspace = await workspaceApi.createWorkspace({
+      await workspaceApi.createWorkspace({
         name: workspaceForm.name.trim(),
-        default_timezone: form.timezone.trim() || "Africa/Dakar",
+        default_timezone: "Africa/Dakar",
         default_currency: "XOF"
       });
-
-      setWorkspaceMessage(`Workspace "${workspace.name}" created.`);
+      setMessage({ type: "success", text: `Workspace "${workspaceForm.name}" created!` });
       setWorkspaceForm({ name: "" });
-      await refresh();
-    } catch (caughtError) {
-      setWorkspaceError(caughtError instanceof Error ? caughtError.message : "Unable to create the workspace.");
+      window.location.reload();
+    } catch (e) {
+      setMessage({ type: "error", text: e instanceof Error ? e.message : "Failed to create workspace" });
     } finally {
-      setIsCreatingWorkspace(false);
+      setSaving(false);
+    }
+  }
+
+  async function handleCreateUser() {
+    if (!createUserForm.workspaceId || !createUserForm.email.trim() || !createUserForm.password.trim() || !createUserForm.fullName.trim()) return;
+    
+    const passwordErrors = validatePassword(createUserForm.password);
+    if (passwordErrors.length > 0) {
+      setMessage({ type: "error", text: "Password does not meet requirements" });
+      return;
+    }
+    
+    // Check if email already exists in members
+    const isAlreadyMember = members.some(m => m.user.email.toLowerCase() === createUserForm.email.trim().toLowerCase());
+    if (isAlreadyMember) {
+      setMessage({ type: "error", text: "This user is already a member of this workspace" });
+      return;
+    }
+    
+    const selectedWorkspace = workspaces.find(w => w.id.toString() === createUserForm.workspaceId);
+    if (!selectedWorkspace) return;
+    
+    setSaving(true);
+    setMessage(null);
+    try {
+      
+      await workspaceApi.addMember(selectedWorkspace.id.toString(), {
+        email: createUserForm.email.trim(),
+        role: createUserForm.role,
+        full_name: createUserForm.fullName.trim(),
+        password: createUserForm.password,
+      });
+      
+      setMessage({ type: "success", text: `User "${createUserForm.email}" created and added to workspace ${selectedWorkspace.name}!` });
+      setCreateUserForm({ fullName: "", email: "", password: "", role: "editor", workspaceId: selectedWorkspace.id.toString() });
+      loadMembers();
+      window.location.reload();
+    } catch (e) {
+      console.error("Create user error:", e);
+      setMessage({ type: "error", text: e instanceof Error ? e.message : "Failed to create user" });
+    } finally {
+      setSaving(false);
     }
   }
 
   async function handleInvite() {
-    if (!activeWorkspace?.id) {
-      setInviteError("No active workspace.");
-      return;
-    }
-
-    setIsInviting(true);
-    setInviteError(null);
-    setInviteMessage(null);
-    setInviteToken(null);
-
+    if (!activeWorkspace?.id || !inviteForm.email.trim()) return;
+    
+    setSaving(true);
+    setMessage(null);
     try {
-      const response = await workspaceApi.inviteMember(String(activeWorkspace.id), {
+      const response = await workspaceApi.addMember(String(activeWorkspace.id), {
         email: inviteForm.email.trim(),
-        role: inviteForm.role
+        role: inviteForm.role,
       });
-
-      setInviteMessage(`Invitation created for ${inviteForm.email.trim()}.`);
-      setInviteToken(response.invitation_token ?? null);
-      setInviteForm((current) => ({ ...current, email: "" }));
-    } catch (caughtError) {
-      setInviteError(caughtError instanceof Error ? caughtError.message : "Unable to create the invitation.");
+      setMessage({ type: "success", text: `${inviteForm.email} added as ${inviteForm.role}!` });
+      setInviteForm({ email: "", role: "editor" });
+      loadMembers();
+    } catch (e) {
+      setMessage({ type: "error", text: e instanceof Error ? e.message : "Failed to add member. Make sure the email exists in the system." });
     } finally {
-      setIsInviting(false);
-    }
-  }
-
-  async function handleAcceptInvitation() {
-    setIsAcceptingInvitation(true);
-    setAcceptError(null);
-    setAcceptMessage(null);
-
-    try {
-      await authApi.acceptInvitation({
-        token: acceptInviteForm.token.trim()
-      });
-
-      setAcceptMessage("Invitation accepted and workspace added to the account.");
-      setAcceptInviteForm({ token: "" });
-      await refresh();
-    } catch (caughtError) {
-      setAcceptError(caughtError instanceof Error ? caughtError.message : "Unable to accept the invitation.");
-    } finally {
-      setIsAcceptingInvitation(false);
-    }
-  }
-
-  async function handleLogout() {
-    setIsLoggingOut(true);
-
-    try {
-      await authApi.logout();
-    } finally {
-      router.replace("/login");
-      router.refresh();
-      setIsLoggingOut(false);
+      setSaving(false);
     }
   }
 
   async function handleGoogleConnect() {
-    setGoogleError(null);
-    setIsGoogleConnecting(true);
-
+    if (googleStatus?.authorization_url) {
+      window.location.href = googleStatus.authorization_url;
+      return;
+    }
+    
+    setGoogleConnecting(true);
     try {
-      const response = await googleCalendarApi.connect({
-        workspace_id: activeWorkspace?.id ? String(activeWorkspace.id) : null
+      const result = await googleCalendarApi.connect({ 
+        workspace_id: activeWorkspace?.id ? String(activeWorkspace.id) : null 
       });
-
-      if (response.authorization_url) {
-        window.location.href = response.authorization_url;
-        return;
+      if (result.authorization_url) {
+        window.location.href = result.authorization_url;
       }
-
-      const status = await googleCalendarApi.getStatus();
-      setGoogleStatus(status);
-    } catch (caughtError) {
-      setGoogleError(caughtError instanceof Error ? caughtError.message : "Unable to connect Google Calendar.");
-    } finally {
-      setIsGoogleConnecting(false);
+    } catch (e) {
+      setMessage({ type: "error", text: "Failed to connect Google Calendar" });
+      setGoogleConnecting(false);
     }
   }
 
   async function handleGoogleSync() {
-    if (!googleStatus?.connection_id) {
-      return;
-    }
-
-    setGoogleError(null);
-    setIsGoogleSyncing(true);
-
+    if (!googleStatus?.connection_id) return;
+    
+    setSaving(true);
     try {
       await googleCalendarApi.sync(googleStatus.connection_id);
       const status = await googleCalendarApi.getStatus();
       setGoogleStatus(status);
-    } catch (caughtError) {
-      setGoogleError(caughtError instanceof Error ? caughtError.message : "Unable to sync Google Calendar.");
+      setMessage({ type: "success", text: "Calendar synced!" });
+    } catch (e) {
+      setMessage({ type: "error", text: "Failed to sync calendar" });
     } finally {
-      setIsGoogleSyncing(false);
+      setSaving(false);
     }
   }
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-5">
-      <div>
-        <p className="text-xs uppercase tracking-[0.22em] text-ink/45">Account Settings</p>
-        <h1 className="mt-2 text-3xl font-semibold text-ink">My account</h1>
-        <p className="mt-2 text-sm leading-7 text-ink/65">
-          Update your login and profile information without touching workspace data.
-        </p>
-        <div className="mt-4">
-          <Button variant="ghost" className="border border-ink/10 bg-white text-ink" onClick={() => void handleLogout()} disabled={isLoggingOut}>
-            {isLoggingOut ? "Signing out..." : "Sign out"}
-          </Button>
+  async function handleLogout() {
+    clearAuthSession();
+    router.push("/login");
+  }
+
+  const getRoleBadge = (role: string) => {
+    const colors: Record<string, string> = {
+      owner: "bg-amber-100 text-amber-800",
+      admin: "bg-purple-100 text-purple-800",
+      editor: "bg-blue-100 text-blue-800",
+      viewer: "bg-slate-100 text-slate-800",
+    };
+    return colors[role] || "bg-slate-100 text-slate-800";
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#faf7f1] p-6 lg:p-10">
+        <div className="max-w-4xl mx-auto">
+          <LoadingSkeleton />
         </div>
       </div>
+    );
+  }
 
-      <SectionContainer
-        eyebrow="User Profile"
-        title="Personal information"
-        description="This form updates the signed-in account used by the cockpit."
-        className="bg-white"
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <Input
-            value={form.fullName}
-            onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))}
-            placeholder="Full name"
-          />
-          <Input
-            value={form.email}
-            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-            placeholder="Email"
-            type="email"
-          />
-          <Input
-            value={form.timezone}
-            onChange={(event) => setForm((current) => ({ ...current, timezone: event.target.value }))}
-            placeholder="Timezone"
-          />
-          <Input
-            value={form.locale}
-            onChange={(event) => setForm((current) => ({ ...current, locale: event.target.value }))}
-            placeholder="Locale"
-          />
-          <div className="md:col-span-2">
-            <div className="rounded-[1.5rem] border border-ink/10 bg-[#faf7f1] p-4">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-ink/10 bg-white">
-                  {form.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={form.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+  return (
+    <div className="min-h-screen bg-[#faf7f1] p-6 lg:p-10">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-8">
+          <p className="text-xs uppercase tracking-widest text-slate-400 mb-2">Settings</p>
+          <h1 className="text-3xl font-bold text-slate-900">Account Settings</h1>
+          <p className="text-slate-500 mt-1">Manage your profile, team, and integrations</p>
+        </div>
+
+        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all ${
+                activeTab === tab.id
+                  ? "bg-slate-900 text-white"
+                  : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+              }`}
+            >
+                            <span className="font-medium">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {message && (
+          <div className={`mb-6 p-4 rounded-xl ${
+            message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"
+          }`}>
+            {message.text}
+          </div>
+        )}
+
+        {activeTab === "profile" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8">
+              <h2 className="text-xl font-semibold text-slate-900 mb-6">Personal Information</h2>
+              
+              <div className="flex items-start gap-6 mb-6">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-rose-400 to-purple-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+                  {(form.avatarUrl && form.avatarUrl.length > 0) ? (
+                    <img src={form.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-[11px] uppercase tracking-[0.18em] text-ink/40">No photo</span>
+                    form.fullName?.[0]?.toUpperCase() || "?"
                   )}
                 </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-ink">Profile photo</p>
-                  <p className="text-sm leading-6 text-ink/62">
-                    Upload your image directly instead of pasting a URL.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="ghost"
-                      className="border border-ink/10 bg-white text-ink"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploadingAvatar}
-                    >
-                      {isUploadingAvatar ? "Uploading..." : "Upload photo"}
+                <div className="flex-1">
+                  <p className="font-medium text-slate-900">{(form.fullName && form.fullName.length > 0) ? form.fullName : "Your Name"}</p>
+                  <p className="text-sm text-slate-500">{(form.email && form.email.length > 0) ? form.email : " "}</p>
+                  <div className="flex gap-2 mt-3">
+                  <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                    Upload Photo
+                  </Button>
+                  {(form.avatarUrl && form.avatarUrl.length > 0) && (
+                    <Button variant="secondary" onClick={() => setForm({ ...form, avatarUrl: "" })}>
+                      Remove
                     </Button>
-                    {form.avatarUrl ? (
-                      <Button
-                        variant="ghost"
-                        className="border border-ink/10 bg-white text-ink"
-                        onClick={() => setForm((current) => ({ ...current, avatarUrl: "" }))}
-                        disabled={isUploadingAvatar}
-                      >
-                        Remove photo
-                      </Button>
-                    ) : null}
+                  )}
                   </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(event) => void handleAvatarUpload(event)}
+                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
+                  <Input
+                    value={form.fullName}
+                    onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                    placeholder="Your full name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                  <Input
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    placeholder="your@email.com"
+                    type="email"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Timezone</label>
+                  <Input
+                    value={form.timezone}
+                    onChange={(e) => setForm({ ...form, timezone: e.target.value })}
+                    placeholder="Africa/Dakar"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Language</label>
+                  <Input
+                    value={form.locale}
+                    onChange={(e) => setForm({ ...form, locale: e.target.value })}
+                    placeholder="en"
                   />
                 </div>
               </div>
-              {avatarError ? <p className="mt-3 text-sm text-rose-600">{avatarError}</p> : null}
-            </div>
-          </div>
-        </div>
 
-        {error ? <p className="mt-4 text-sm text-rose-600">{error}</p> : null}
-        {message ? <p className="mt-4 text-sm text-emerald-700">{message}</p> : null}
-
-        <div className="mt-5 flex justify-end">
-          <Button
-            onClick={() => void handleSave()}
-            disabled={isSaving || !form.fullName.trim() || !form.email.trim()}
-          >
-            {isSaving ? "Saving..." : "Save account"}
-          </Button>
-        </div>
-      </SectionContainer>
-
-      <SectionContainer
-        eyebrow="Secured Access"
-        title="Create Access"
-        description="These actions are available only after sign-in. Create a workspace or generate an invitation for the active workspace."
-        className="bg-white"
-      >
-        <div className="grid gap-5 lg:grid-cols-2">
-          <div className="space-y-4 rounded-3xl border border-ink/10 p-5">
-            <div>
-              <p className="text-sm font-medium text-ink">New workspace</p>
-              <p className="mt-1 text-sm leading-6 text-ink/65">
-                Use this action to create a new workspace from the dashboard.
-              </p>
-            </div>
-            <Input
-              value={workspaceForm.name}
-              onChange={(event) => setWorkspaceForm({ name: event.target.value })}
-              placeholder="Workspace name"
-            />
-            {workspaceError ? <p className="text-sm text-rose-600">{workspaceError}</p> : null}
-            {workspaceMessage ? <p className="text-sm text-emerald-700">{workspaceMessage}</p> : null}
-            <Button
-              onClick={() => void handleCreateWorkspace()}
-              disabled={isCreatingWorkspace || !workspaceForm.name.trim()}
-            >
-              {isCreatingWorkspace ? "Creating..." : "Create workspace"}
-            </Button>
-          </div>
-
-          <div className="space-y-4 rounded-3xl border border-ink/10 p-5">
-            <div>
-              <p className="text-sm font-medium text-ink">Secure invitation</p>
-              <p className="mt-1 text-sm leading-6 text-ink/65">
-                Invite a member into the active workspace{activeWorkspace ? `: ${activeWorkspace.name}` : ""}.
-              </p>
-            </div>
-            <Input
-              value={inviteForm.email}
-              onChange={(event) => setInviteForm((current) => ({ ...current, email: event.target.value }))}
-              placeholder="Member email"
-              type="email"
-            />
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-ink/45">Access role</p>
-              <div className="grid gap-3">
-                {inviteRoleOptions.map((roleOption) => {
-                  const selected = inviteForm.role === roleOption.value;
-
-                  return (
-                    <button
-                      key={roleOption.value}
-                      type="button"
-                      onClick={() => setInviteForm((current) => ({ ...current, role: roleOption.value }))}
-                      className={`rounded-[1.35rem] border px-4 py-4 text-left transition ${
-                        selected
-                          ? "border-ink bg-ink text-white shadow-[0_14px_34px_rgba(15,23,42,0.16)]"
-                          : "border-ink/10 bg-[#f8f5ef] text-ink hover:border-ink/20 hover:bg-white"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className={`text-sm font-semibold ${selected ? "text-white" : "text-ink"}`}>
-                            {roleOption.label}
-                          </p>
-                          <p className={`mt-1 text-sm leading-6 ${selected ? "text-white/72" : "text-ink/62"}`}>
-                            {roleOption.description}
-                          </p>
-                        </div>
-                        <span
-                          className={`mt-1 h-4 w-4 rounded-full border ${
-                            selected ? "border-white bg-white" : "border-ink/20 bg-transparent"
-                          }`}
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            {inviteError ? <p className="text-sm text-rose-600">{inviteError}</p> : null}
-            {inviteMessage ? <p className="text-sm text-emerald-700">{inviteMessage}</p> : null}
-            {inviteToken ? (
-              <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
-                Invitation token: <span className="break-all font-mono">{inviteToken}</span>
-              </div>
-            ) : null}
-            <Button
-              onClick={() => void handleInvite()}
-              disabled={isInviting || !inviteForm.email.trim() || !activeWorkspace?.id}
-            >
-              {isInviting ? "Generating..." : "Generate invitation"}
-            </Button>
-          </div>
-        </div>
-      </SectionContainer>
-
-      <SectionContainer
-        eyebrow="Secured Access"
-        title="Accept invitation"
-        description="Use an invitation token from an already signed-in account to add a workspace to your access."
-        className="bg-white"
-      >
-        <div className="space-y-4">
-          <Input
-            value={acceptInviteForm.token}
-            onChange={(event) => setAcceptInviteForm({ token: event.target.value })}
-            placeholder="Invitation token"
-          />
-          {acceptError ? <p className="text-sm text-rose-600">{acceptError}</p> : null}
-          {acceptMessage ? <p className="text-sm text-emerald-700">{acceptMessage}</p> : null}
-          <div className="flex justify-end">
-            <Button
-              onClick={() => void handleAcceptInvitation()}
-              disabled={isAcceptingInvitation || !acceptInviteForm.token.trim()}
-            >
-              {isAcceptingInvitation ? "Accepting..." : "Accept invitation"}
-            </Button>
-          </div>
-        </div>
-      </SectionContainer>
-
-      <SectionContainer
-        eyebrow="Calendar"
-        title="Google Calendar"
-        description="Connect your Google Calendar, run a sync, then find today's events here."
-        className="bg-white"
-      >
-        <div className="space-y-4">
-          <div className="rounded-[1.4rem] border border-ink/10 bg-[#faf7f1] p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-ink">
-                  {isGoogleLoading
-                    ? "Loading..."
-                    : googleStatus?.calendar_label
-                      ? `Connected to ${googleStatus.calendar_label}`
-                      : "No Google Calendar connection"}
-                </p>
-                <p className="mt-1 text-sm leading-6 text-ink/62">
-                  {googleStatus?.last_synced_at
-                    ? `Last synced: ${new Date(googleStatus.last_synced_at).toLocaleString()}`
-                    : "Connect your calendar to pull in today's events."}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={() => void handleGoogleConnect()} disabled={isGoogleConnecting || isGoogleLoading}>
-                  {isGoogleConnecting ? "Connecting..." : googleStatus?.connection_id ? "Reconnect Google" : "Connect Google Calendar"}
+              <div className="flex justify-end mt-6">
+                <Button onClick={handleSaveProfile} disabled={saving}>
+                  {saving ? "Saving..." : "Save Changes"}
                 </Button>
-                {googleStatus?.connection_id ? (
-                  <Button variant="ghost" className="border border-ink/10 bg-white text-ink" onClick={() => void handleGoogleSync()} disabled={isGoogleSyncing}>
-                    {isGoogleSyncing ? "Syncing..." : "Sync now"}
-                  </Button>
-                ) : null}
               </div>
             </div>
-            {googleError ? <p className="mt-3 text-sm text-rose-600">{googleError}</p> : null}
-            {googleStatus?.message ? <p className="mt-3 text-sm text-amber-700">{googleStatus.message}</p> : null}
+
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8">
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Danger Zone</h2>
+              <p className="text-sm text-slate-500 mb-6">Sign out of your account on this device.</p>
+              <Button variant="danger" className="border-red-200 text-red-600 hover:bg-red-50" onClick={handleLogout}>
+                Sign Out
+              </Button>
+            </div>
           </div>
+        )}
 
-          <div className="grid gap-3">
-            {(googleStatus?.recent_events ?? [])
-              .filter((event) => {
-                if (!event.starts_at) {
-                  return false;
-                }
+        {activeTab === "team" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8">
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Team Members</h2>
+              <p className="text-sm text-slate-500 mb-6">Manage your workspace team members.</p>
+              
+              <div className="space-y-3 mb-6">
+                {members.length === 0 ? (
+                  <p className="text-slate-400 text-sm py-4">No team members yet.</p>
+                ) : (
+                  members.map((member) => (
+                    <div key={member.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 font-medium">
+                          {member.user.name?.[0]?.toUpperCase() || member.user.email[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">{member.user.name || member.user.email}</p>
+                          <p className="text-xs text-slate-500">{member.user.email}</p>
+                        </div>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadge(member.role)}`}>
+                        {member.role}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
-                const date = new Date(event.starts_at);
-                const now = new Date();
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8">
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Create New Team Member</h2>
+              <p className="text-sm text-slate-500 mb-6">Create a new user and add them to the current workspace.</p>
+              
+              <div className="grid gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
+                    <Input
+                      value={createUserForm.fullName}
+                      onChange={(e) => setCreateUserForm({ ...createUserForm, fullName: e.target.value })}
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                    <Input
+                      value={createUserForm.email}
+                      onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
+                      placeholder="john@example.com"
+                      type="email"
+                    />
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
+                    <div className="relative">
+                      <Input
+                        value={createUserForm.password}
+                        onChange={(e) => {
+                          setCreateUserForm({ ...createUserForm, password: e.target.value });
+                          setPasswordErrors(validatePassword(e.target.value));
+                        }}
+                        placeholder="Minimum 8 characters"
+                        type={showPassword ? "text" : "password"}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {createUserForm.password.length > 0 && (
+                      <div className="mt-2 text-xs space-y-1">
+                        {["At least 8 characters", "One uppercase letter", "One lowercase letter", "One number", "One special character"].map((req) => {
+                          const met = checkPasswordRequirement(createUserForm.password, req);
+                          return (
+                            <p key={req} className={met ? "text-emerald-600" : "text-slate-400"}>
+                              {met ? "✓" : "○"} {req}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Workspace <span className="text-red-500">*</span></label>
+                    <select
+                      value={createUserForm.workspaceId}
+                      onChange={(e) => setCreateUserForm({ ...createUserForm, workspaceId: e.target.value })}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white"
+                    >
+                      <option value="">Select workspace...</option>
+                      {workspaces.map((ws) => (
+                        <option key={ws.id} value={ws.id}>{ws.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
+                    <select
+                      value={createUserForm.role}
+                      onChange={(e) => setCreateUserForm({ ...createUserForm, role: e.target.value })}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white"
+                    >
+                      <option value="editor">Editor</option>
+                      <option value="admin">Admin</option>
+                      <option value="owner">Owner</option>
+                      <option value="viewer">Viewer</option>
+                    </select>
+                  </div>
+                </div>
+                <Button onClick={handleCreateUser} disabled={saving || !createUserForm.workspaceId || !createUserForm.email.trim() || !createUserForm.password.trim() || !createUserForm.fullName.trim()}>
+                  {saving ? "Creating..." : "Create & Invite User"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
-                return (
-                  date.getFullYear() === now.getFullYear() &&
-                  date.getMonth() === now.getMonth() &&
-                  date.getDate() === now.getDate()
-                );
-              })
-              .map((event) => (
-                <div key={event.external_event_id ?? `${event.title}-${event.starts_at}`} className="rounded-[1.2rem] border border-ink/10 bg-white p-4">
-                  <p className="text-sm font-semibold text-ink">{event.title}</p>
-                  <p className="mt-1 text-sm text-ink/62">
-                    {event.starts_at ? new Date(event.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
-                    {event.ends_at
-                      ? ` - ${new Date(event.ends_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                      : ""}
+        {activeTab === "workspaces" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-slate-900">Create Workspace</h2>
+              </div>
+
+              <div className="border-t border-slate-200 pt-6">
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Create New Workspace</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Workspace Name</label>
+                    <Input
+                      value={workspaceForm.name}
+                      onChange={(e) => setWorkspaceForm({ name: e.target.value })}
+                      placeholder="My Startup"
+                    />
+                  </div>
+                  <Button onClick={handleCreateWorkspace} disabled={saving || !workspaceForm.name.trim()}>
+                    {saving ? "Creating..." : "Create Workspace"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {activeWorkspace && (
+              <div className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8">
+                <h2 className="text-xl font-semibold text-slate-900 mb-2">Workspace Overview</h2>
+                <p className="text-sm text-slate-500 mb-6">{activeWorkspace.name}</p>
+                
+                <div className="grid gap-4 mb-6">
+                  <div className="p-4 bg-slate-50 rounded-xl">
+                    <p className="text-xs text-slate-500 uppercase">Workspace ID</p>
+                    <p className="text-sm font-medium text-slate-900">{activeWorkspace.id}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-xl">
+                    <p className="text-xs text-slate-500 uppercase">Members</p>
+                    <p className="text-sm font-medium text-slate-900">{members.length}</p>
+                  </div>
+                </div>
+
+                <h3 className="font-semibold text-slate-900 mb-3 mt-6">Workspace Members</h3>
+                <div className="space-y-3">
+                  {members.length === 0 ? (
+                    <p className="text-slate-400 text-sm py-4">No members yet.</p>
+                  ) : (
+                    members.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 font-medium">
+                            {member.user.name?.[0]?.toUpperCase() || member.user.email[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-900">{member.user.name || member.user.email}</p>
+                            <p className="text-xs text-slate-500">{member.user.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadge(member.role)}`}>
+                            {member.role}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            </div>
+        )}
+
+        {activeTab === "calendar" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">Google Calendar</h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {googleStatus?.calendar_label 
+                      ? `Connected to ${googleStatus.calendar_label}` 
+                      : "Connect to sync your events"}
                   </p>
                 </div>
-              ))}
-
-            {!isGoogleLoading &&
-            (googleStatus?.recent_events ?? []).filter((event) => {
-              if (!event.starts_at) {
-                return false;
-              }
-
-              const date = new Date(event.starts_at);
-              const now = new Date();
-
-              return (
-                date.getFullYear() === now.getFullYear() &&
-                date.getMonth() === now.getMonth() &&
-                date.getDate() === now.getDate()
-              );
-            }).length === 0 ? (
-              <div className="rounded-[1.2rem] border border-dashed border-ink/10 bg-[#faf7f1] p-4 text-sm text-ink/62">
-                No Google Calendar events found for today.
+                <Button onClick={handleGoogleConnect} disabled={googleConnecting}>
+                  {googleConnecting ? "Connecting..." : googleStatus?.connection_id ? "Reconnect" : "Connect"}
+                </Button>
               </div>
-            ) : null}
+
+              {googleStatus?.last_synced_at && (
+                <p className="text-sm text-slate-500 mb-4">
+                  Last synced: {new Date(googleStatus.last_synced_at).toLocaleString()}
+                </p>
+              )}
+
+              {googleStatus?.connection_id && (
+                <Button variant="secondary" onClick={handleGoogleSync} disabled={saving} className="mb-4">
+                  {saving ? "Syncing..." : "Sync Now"}
+                </Button>
+              )}
+
+              <div className="space-y-2">
+                <h3 className="font-medium text-slate-900">Today's Events</h3>
+                {(googleStatus?.recent_events ?? [])
+                  .filter((e) => {
+                    if (!e.starts_at) return false;
+                    const d = new Date(e.starts_at);
+                    const now = new Date();
+                    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+                  })
+                  .map((event) => (
+                    <div key={event.external_event_id} className="p-4 bg-slate-50 rounded-xl">
+                      <p className="font-medium text-slate-900">{event.title}</p>
+                      <p className="text-sm text-slate-500">
+                        {event.starts_at && new Date(event.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {event.ends_at && ` - ${new Date(event.ends_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                      </p>
+                    </div>
+                  ))}
+                {(googleStatus?.recent_events ?? []).filter((e) => {
+                  if (!e.starts_at) return false;
+                  const d = new Date(e.starts_at);
+                  const now = new Date();
+                  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+                }).length === 0 && (
+                  <p className="text-slate-400 text-sm py-4">No events for today.</p>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </SectionContainer>
+        )}
+
+        {activeTab === "security" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 lg:p-8">
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">Security</h2>
+              <p className="text-sm text-slate-500 mb-6">Manage your password and security settings.</p>
+              
+              <div className="space-y-4">
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-slate-900">Password</p>
+                      <p className="text-sm text-slate-500">Change your password to keep your account secure.</p>
+                    </div>
+                    <Button variant="secondary" onClick={() => {
+                      const currentPassword = prompt("Enter current password:");
+                      if (!currentPassword) return;
+                      
+                      let newPassword = prompt("Enter new password (min 8 chars, uppercase, lowercase, number, special):");
+                      if (!newPassword) return;
+                      
+                      const errors = validatePassword(newPassword);
+                      if (errors.length > 0) {
+                        alert("Password must have:\n" + errors.join("\n"));
+                        return;
+                      }
+                      
+                      let confirmPassword = prompt("Confirm new password:");
+                      if (!confirmPassword) return;
+                      
+                      if (newPassword !== confirmPassword) {
+                        alert("Passwords do not match!");
+                        return;
+                      }
+                      
+                      authApi.changePassword({
+                        current_password: currentPassword,
+                        password: newPassword,
+                        password_confirmation: confirmPassword
+                      }).then(() => {
+                        alert("Password changed successfully!");
+                      }).catch((e) => {
+                        alert("Failed to change password: " + e.message);
+                      });
+                    }}>Change Password</Button>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-slate-900">Two-Factor Authentication</p>
+                      <p className="text-sm text-slate-500">Add an extra layer of security to your account.</p>
+                      <p className="text-xs text-emerald-600 mt-2">Status: Not enabled</p>
+                    </div>
+                    <Button variant="secondary" onClick={() => {
+                      authApi.enable2FA().then((result) => {
+                        if (result.secret) {
+                          alert("2FA enabled! Secret: " + result.secret);
+                        }
+                      }).catch((e) => {
+                        alert("Failed to enable 2FA: " + e.message);
+                      });
+                    }}>Enable 2FA</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

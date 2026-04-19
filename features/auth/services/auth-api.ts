@@ -37,7 +37,6 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(payload)
     });
-
     return persistSession(response);
   },
 
@@ -45,6 +44,7 @@ export const authApi = {
     fullName: string;
     email: string;
     password: string;
+    password_confirmation?: string;
     workspaceName?: string;
   }) {
     const response = await requestJson<AuthApiResponse>("/api/auth/register", {
@@ -101,5 +101,40 @@ export const authApi = {
     } finally {
       clearAuthSession();
     }
+  },
+
+  async changePassword(payload: { current_password: string; password: string; password_confirmation: string }) {
+    const response = await requestJson<{ message?: string }>("/api/user/password", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    return response;
+  },
+
+  async enable2FA() {
+    const response = await requestJson<{ secret?: string; qr_code?: string }>("/api/user/2fa/enable", {
+      method: "POST"
+    });
+
+    return response;
+  },
+
+  async disable2FA(payload: { code: string }) {
+    const response = await requestJson<{ message?: string }>("/api/user/2fa/disable", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    return response;
+  },
+
+  async verify2FA(payload: { code: string }) {
+    const response = await requestJson<{ valid?: boolean }>("/api/user/2fa/verify", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    return response;
   }
 };

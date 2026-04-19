@@ -12,13 +12,14 @@ export function slugifyProjectName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "new-project";
 }
 
-export function getProjectRoute(projectId?: string | null, suffix = "") {
-  if (!projectId || projectId === "current") {
+export function getProjectRoute(projectId?: string | null, suffix = "", projectUuid?: string | null) {
+  const id = projectUuid || projectId;
+  if (!id || id === "current") {
     if (!suffix) {
       return "/today";
     }
     return "/projects/new" + suffix;
   }
 
-  return `/projects/${projectId}${suffix}`;
+  return `/projects/${id}${suffix}`;
 }

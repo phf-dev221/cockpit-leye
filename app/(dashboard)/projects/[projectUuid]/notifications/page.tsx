@@ -3,9 +3,9 @@ import { ProjectNotificationsScreen } from "@/features/projects/components/proje
 export default async function NotificationsPage({
   params
 }: {
-  params: Promise<{ projectId: string }>;
+  params: Promise<{ projectUuid: string }>;
 }) {
-  const { projectId } = await params;
+  const { projectUuid } = await params;
 
-  return <ProjectNotificationsScreen projectId={projectId} />;
+  return <ProjectNotificationsScreen projectId={projectUuid} />;
 }

@@ -39,7 +39,7 @@ import { useUiStore } from "@/store/ui-store";
 import type { DemoCanvasKey, DemoProject, DemoStepKey, DemoWorkspaceView } from "@/types";
 
 const tabs = [
-  { id: "overview", label: "Pilotage" },
+  { id: "overview", label: "Overview" },
   { id: "today", label: "Today" },
   { id: "capture", label: "Capture" },
   { id: "strategy", label: "Strategy" },
@@ -83,13 +83,13 @@ function getBrief(project: DemoProject) {
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("fr-FR").format(value);
+  return new Intl.NumberFormat("en-US").format(value);
 }
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("fr-FR", {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "EUR",
+    currency: "USD",
     maximumFractionDigits: 0
   }).format(value);
 }
@@ -550,7 +550,7 @@ export function DemoWorkbench({
             </div>
             <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               <Button className="min-w-[170px] justify-between" onClick={focusNextStep}>Open next<ArrowRight className="h-4 w-4" /></Button>
-              <Button variant="secondary" className="min-w-[170px] justify-between" onClick={() => { setWorkspaceView("overview"); pulse("Opened pilotage metrics."); }}>Pilotage<BarChart3 className="h-4 w-4" /></Button>
+              <Button variant="secondary" className="min-w-[170px] justify-between" onClick={() => { setWorkspaceView("overview"); pulse("Opened overview metrics."); }}>Overview<BarChart3 className="h-4 w-4" /></Button>
               <Button variant="secondary" className="min-w-[170px] justify-between" onClick={() => { setWorkspaceView("strategy"); pulse("Opened the strategy canvases."); }}>Open strategy<Lightbulb className="h-4 w-4" /></Button>
               <Button variant="secondary" className="min-w-[170px] justify-between" onClick={() => { setWorkspaceView("records"); pulse("Opened records and notifications."); }}>Open records<Inbox className="h-4 w-4" /></Button>
               <Button variant="secondary" className="min-w-[170px] justify-between" onClick={() => { setWorkspaceView("planner"); pulse("Opened reminders and calendar."); }}>Plan now<CalendarDays className="h-4 w-4" /></Button>
@@ -562,9 +562,9 @@ export function DemoWorkbench({
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-          <Card className="metric-tile rounded-[1.6rem] p-5"><p className="text-xs uppercase tracking-[0.18em] text-ink/45">Execution</p><p className="mt-3 text-3xl font-semibold text-ink">{executionScore}%</p><p className="mt-2 text-sm text-ink/60">{doneSteps} étapes validées et {doneSprintTasks} tâches sprint terminées.</p></Card>
-          <Card className="metric-tile rounded-[1.6rem] p-5"><p className="text-xs uppercase tracking-[0.18em] text-ink/45">First Clients</p><p className="mt-3 text-3xl font-semibold text-ink">{business.goToMarket.firstClientTargetDays}j</p><p className="mt-2 text-sm text-ink/60">Objectif pour signer les premiers clients. Jour {activeProject.dayCount} aujourd'hui.</p></Card>
-          <Card className="metric-tile rounded-[1.6rem] p-5"><p className="text-xs uppercase tracking-[0.18em] text-ink/45">Acquisition</p><p className="mt-3 text-3xl font-semibold text-ink">{business.goToMarket.acquisitionFrequencyPerMonth}/mois</p><p className="mt-2 text-sm text-ink/60">{business.goToMarket.clientsAcquired} clients acquis et {openReminders} relances encore ouvertes.</p></Card>
+          <Card className="metric-tile rounded-[1.6rem] p-5"><p className="text-xs uppercase tracking-[0.18em] text-ink/45">Execution</p><p className="mt-3 text-3xl font-semibold text-ink">{executionScore}%</p><p className="mt-2 text-sm text-ink/60">{doneSteps} completed steps and {doneSprintTasks} finished sprint tasks.</p></Card>
+          <Card className="metric-tile rounded-[1.6rem] p-5"><p className="text-xs uppercase tracking-[0.18em] text-ink/45">First Clients</p><p className="mt-3 text-3xl font-semibold text-ink">{business.goToMarket.firstClientTargetDays}d</p><p className="mt-2 text-sm text-ink/60">Target time to sign the first clients. Day {activeProject.dayCount} today.</p></Card>
+          <Card className="metric-tile rounded-[1.6rem] p-5"><p className="text-xs uppercase tracking-[0.18em] text-ink/45">Acquisition</p><p className="mt-3 text-3xl font-semibold text-ink">{business.goToMarket.acquisitionFrequencyPerMonth}/month</p><p className="mt-2 text-sm text-ink/60">{business.goToMarket.clientsAcquired} clients acquired and {openReminders} follow-ups still open.</p></Card>
         </div>
       </section>
 
@@ -585,13 +585,13 @@ export function DemoWorkbench({
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-ink/45">Project Cockpit</p>
-                  <h3 className="mt-2 text-3xl font-semibold">Vision globale sur l'evolution du projet</h3>
+                  <h3 className="mt-2 text-3xl font-semibold">Project-wide view of progress</h3>
                   <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/68">
-                    Cette vue vous montre ce qui est fait, les deadlines, ce qui reste a faire et les chiffres qui disent si le projet devient viable.
+                    This view shows what is done, the deadlines, what is left, and the metrics that tell you whether the project is becoming viable.
                   </p>
                 </div>
                 <span className="rounded-full bg-amber-50 px-4 py-2 text-xs text-ink/70">
-                  {remainingSprintTasks} sujets sprint restants
+                  {remainingSprintTasks} sprint items remaining
                 </span>
               </div>
 
@@ -601,12 +601,12 @@ export function DemoWorkbench({
                     <BarChart3 className="h-5 w-5 text-pine" />
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-ink/45">KPI 1</p>
-                      <h4 className="mt-1 text-lg font-semibold">Avancement global</h4>
+                      <h4 className="mt-1 text-lg font-semibold">Overall progress</h4>
                     </div>
                   </div>
                   <p className="mt-4 text-3xl font-semibold text-ink">{executionScore}%</p>
                   <p className="mt-2 text-sm leading-6 text-ink/65">
-                    Le score mélange l'avancement des étapes produit et la livraison sprint.
+                    The score blends product-step progress with sprint delivery.
                   </p>
                 </Card>
 
@@ -615,12 +615,12 @@ export function DemoWorkbench({
                     <Clock3 className="h-5 w-5 text-ember" />
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-ink/45">KPI 2</p>
-                      <h4 className="mt-1 text-lg font-semibold">Temps vers 1ers clients</h4>
+                      <h4 className="mt-1 text-lg font-semibold">Time to first clients</h4>
                     </div>
                   </div>
                   <p className="mt-4 text-3xl font-semibold text-ink">{firstClientProgress}%</p>
                   <p className="mt-2 text-sm leading-6 text-ink/65">
-                    Jour {activeProject.dayCount} sur un objectif de {business.goToMarket.firstClientTargetDays} jours.
+                    Day {activeProject.dayCount} out of a target of {business.goToMarket.firstClientTargetDays} days.
                   </p>
                 </Card>
 
@@ -629,12 +629,12 @@ export function DemoWorkbench({
                     <Users className="h-5 w-5 text-pine" />
                     <div>
                       <p className="text-xs uppercase tracking-[0.18em] text-ink/45">KPI 3</p>
-                      <h4 className="mt-1 text-lg font-semibold">Frequence d'acquisition</h4>
+                      <h4 className="mt-1 text-lg font-semibold">Acquisition frequency</h4>
                     </div>
                   </div>
-                  <p className="mt-4 text-3xl font-semibold text-ink">{business.goToMarket.acquisitionFrequencyPerMonth}/mois</p>
+                  <p className="mt-4 text-3xl font-semibold text-ink">{business.goToMarket.acquisitionFrequencyPerMonth}/month</p>
                   <p className="mt-2 text-sm leading-6 text-ink/65">
-                    {business.goToMarket.clientsAcquired} clients acquis a ce stade via {business.goToMarket.primaryChannel}.
+                    {business.goToMarket.clientsAcquired} clients acquired so far through {business.goToMarket.primaryChannel}.
                   </p>
                 </Card>
               </div>
@@ -687,7 +687,7 @@ export function DemoWorkbench({
                       onChange={(event) =>
                         updateBusinessField("goToMarket", "clientsAcquired", Number(event.target.value) || 0)
                       }
-                      placeholder="Clients acquis"
+                      placeholder="Clients acquired"
                     />
                     <Input
                       type="number"
@@ -695,7 +695,7 @@ export function DemoWorkbench({
                       onChange={(event) =>
                         updateBusinessField("goToMarket", "acquisitionFrequencyPerMonth", Number(event.target.value) || 0)
                       }
-                      placeholder="Acquisition par mois"
+                      placeholder="Acquisition per month"
                     />
                     <Input
                       value={business.goToMarket.primaryChannel}
@@ -704,11 +704,11 @@ export function DemoWorkbench({
                     />
                   </div>
                   <div className="mt-5 rounded-3xl bg-white/80 p-4 text-sm leading-7 text-ink/72">
-                    A ce rythme, vous construisez un go-to-market capable d'absorber environ{" "}
+                    At this pace, you are building a go-to-market motion that can absorb about{" "}
                     <span className="font-semibold text-ink">
                       {business.goToMarket.acquisitionFrequencyPerMonth * 3}
                     </span>{" "}
-                    clients sur 90 jours si la cadence se maintient.
+                    clients over 90 days if the pace holds.
                   </div>
                 </Card>
 
@@ -745,7 +745,7 @@ export function DemoWorkbench({
                       onChange={(event) =>
                         updateBusinessField("economics", "productionCost", Number(event.target.value) || 0)
                       }
-                      placeholder="Cout de prod"
+                      placeholder="Production cost"
                     />
                     <Input
                       type="number"
@@ -761,7 +761,7 @@ export function DemoWorkbench({
                       onChange={(event) =>
                         updateBusinessField("economics", "runwayMonths", Number(event.target.value) || 0)
                       }
-                      placeholder="Runway (mois)"
+                      placeholder="Runway (months)"
                     />
                   </div>
                   <Textarea
@@ -814,7 +814,7 @@ export function DemoWorkbench({
                       onChange={(event) =>
                         updateBusinessField("build", "mvpHoursTarget", Number(event.target.value) || 0)
                       }
-                      placeholder="Objectif heures MVP"
+                      placeholder="MVP hours target"
                     />
                     <Input
                       value={business.build.calendarConnectionLabel}
@@ -824,12 +824,12 @@ export function DemoWorkbench({
                   </div>
                   <div className="mt-4 rounded-3xl bg-white/80 p-4">
                     <p className="text-sm leading-7 text-ink/70">
-                      Il reste environ <span className="font-semibold text-ink">{hoursRemaining}h</span> pour arriver a votre cible MVP,
-                      soit <span className="font-semibold text-ink">{weeksToBuild} semaines</span> au rythme actuel.
+                      About <span className="font-semibold text-ink">{hoursRemaining}h</span> remain to reach your MVP target,
+                      which is roughly <span className="font-semibold text-ink">{weeksToBuild} weeks</span> at the current pace.
                     </p>
                   </div>
                   <div className="mt-4 rounded-3xl bg-amber-50 p-4 text-sm leading-7 text-ink/72">
-                    Calendrier: {business.build.calendarConnectionLabel}. Le bloc calendrier existant peut ensuite etre relie a Google Calendar.
+                    Calendar: {business.build.calendarConnectionLabel}. The existing calendar block can later be connected to Google Calendar.
                   </div>
                 </Card>
               </div>
@@ -1204,18 +1204,18 @@ export function DemoWorkbench({
           {workspaceView === "overview" && (
             <Card className="warm-panel space-y-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-ink/45">Pilotage Summary</p>
-                <h3 className="mt-2 text-xl font-semibold">Ou en est le projet ?</h3>
+                <p className="text-xs uppercase tracking-[0.2em] text-ink/45">Overview Summary</p>
+                <h3 className="mt-2 text-xl font-semibold">Where does the project stand?</h3>
               </div>
               <div className="space-y-3 text-sm leading-6 text-ink/75">
                 <p className="rounded-3xl bg-surface/80 p-4">
-                  Canal prioritaire: <span className="font-medium text-ink">{business.goToMarket.primaryChannel}</span>
+                  Primary channel: <span className="font-medium text-ink">{business.goToMarket.primaryChannel}</span>
                 </p>
                 <p className="rounded-3xl bg-surface/80 p-4">
-                  Cout de prod: <span className="font-medium text-ink">{formatCurrency(business.economics.productionCost)}</span>
+                  Production cost: <span className="font-medium text-ink">{formatCurrency(business.economics.productionCost)}</span>
                 </p>
                 <p className="rounded-3xl bg-amber-50 p-4">
-                  Time to build restant: <span className="font-medium text-ink">{hoursRemaining}h</span>
+                  Remaining build time: <span className="font-medium text-ink">{hoursRemaining}h</span>
                 </p>
               </div>
             </Card>

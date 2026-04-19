@@ -4,34 +4,46 @@ import type { ComponentType } from "react";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CalendarDays, FolderKanban, Gauge, PlusCircle, Rocket, Settings2, UserCircle2 } from "lucide-react";
+import { CalendarDays, Gauge, PlusCircle, Rocket, Settings2, UserCircle2, MessageSquareText, Briefcase, TrendingUp, BarChart3, Users, Presentation, Map, Sparkles, ClipboardCheck } from "lucide-react";
 
-import { Card } from "@/components/ui/card";
 import { useProjectWorkspace } from "@/features/projects/hooks/use-project-workspace";
 import { cn, getProjectRoute } from "@/lib/utils";
+import { LanguageSwitcher } from "@/features/auth/components/language-switcher";
+import Card from "@/components/ui/card";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { projects, activeProjectId, activeProject, setActiveProject } = useProjectWorkspace();
   const projectId = activeProject?.id ?? activeProjectId ?? projects[0]?.id ?? null;
+  const projectUuid = activeProject?.uuid ?? null;
   const navItems = [
     { href: "/today", label: "Today", icon: Gauge },
-    { href: getProjectRoute(projectId, "/sections"), label: "Workspace", icon: FolderKanban },
-    { href: getProjectRoute(projectId, "/calendar"), label: "Calendar", icon: CalendarDays },
-    { href: getProjectRoute(projectId, "/notifications"), label: "Alerts", icon: Bell },
-    { href: getProjectRoute(projectId, "/sprints"), label: "Sprint", icon: Rocket },
-    { href: getProjectRoute(projectId, "/manage"), label: "Manage", icon: Settings2 },
+    { href: getProjectRoute(projectId, "/problem-statement", projectUuid), label: "Problem", icon: Sparkles },
+    { href: getProjectRoute(projectId, "/problem-validation", projectUuid), label: "Validation", icon: ClipboardCheck },
+    { href: getProjectRoute(projectId, "/interviews", projectUuid), label: "Research", icon: MessageSquareText },
+    { href: getProjectRoute(projectId, "/icp", projectUuid), label: "ICP", icon: Users },
+    { href: getProjectRoute(projectId, "/market-sizing", projectUuid), label: "Market Size", icon: BarChart3 },
+    { href: getProjectRoute(projectId, "/journey", projectUuid), label: "Journey", icon: Map },
+    { href: getProjectRoute(projectId, "/business", projectUuid), label: "Business", icon: Briefcase },
+    { href: getProjectRoute(projectId, "/gtm", projectUuid), label: "GTM", icon: TrendingUp },
+    { href: getProjectRoute(projectId, "/gamma", projectUuid), label: "Slides", icon: Presentation },
+    { href: getProjectRoute(projectId, "/calendar", projectUuid), label: "Calendar", icon: CalendarDays },
+    { href: getProjectRoute(projectId, "/sprints", projectUuid), label: "Sprint", icon: Rocket },
+    { href: getProjectRoute(projectId, "/manage", projectUuid), label: "Manage", icon: Settings2 },
     { href: "/account", label: "Account", icon: UserCircle2 }
   ] satisfies Array<{ href: string; label: string; icon: ComponentType<{ className?: string }> }>;
 
   return (
     <div className="soft-grid mx-auto min-h-screen max-w-[1720px] px-4 py-4 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-6 lg:px-6 lg:py-6">
-      <aside className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start">
-        <Card className="flex flex-col h-full border-slate-200 bg-[#0f1720] text-slate-50 lg:max-h-[calc(100vh-3rem)]">
-          <div className="flex flex-col gap-4 p-4 min-h-0 flex-1">
-            <div className="flex-shrink-0">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-surface/55">Teranga Cockpit</p>
-              <h1 className="mt-2 text-xl font-semibold sm:text-2xl">Personal Desk</h1>
+      <aside className="lg:sticky lg:top-6">
+        <Card className="!bg-[#0f1720] !text-slate-50 flex flex-col border-slate-800 lg:max-h-[calc(100vh-3rem)] lg:overflow-hidden">
+          <div className="flex flex-col gap-4 p-4 lg:overflow-y-auto lg:max-h-[calc(100vh-3rem)]">
+            <div className="flex-shrink-0 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.28em] text-surface/55">Teranga Cockpit</p>
+                <h1 className="mt-2 text-xl font-semibold sm:text-2xl">Personal Desk</h1>
+              </div>
+              <LanguageSwitcher variant="text" />
             </div>
 
             <div className="flex-shrink-0 rounded-[1.35rem] border border-white/10 bg-white/5 p-3">
@@ -63,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
 
-            <nav className="flex-1 space-y-1.5 overflow-y-auto min-h-0">
+            <nav className="flex-1 space-y-1.5 overflow-y-auto">
               {navItems.map(({ href, label, icon: Icon }) => {
                 const isActive = pathname === href;
 

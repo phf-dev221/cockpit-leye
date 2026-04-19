@@ -1,10 +1,21 @@
 "use client";
 
-import type { DemoConversation, DemoFileRecord, DemoFocusItem, DemoProject, DemoTask } from "@/types";
+import type { DemoConversation, DemoFileRecord, DemoFocusItem, DemoProject, DemoTask, SprintTask } from "@/types";
 import { requestJson } from "@/lib/api/client";
 import { getActiveWorkspaceId } from "@/features/auth/services/auth-session";
 
 const DEFAULT_WORKSPACE_ID = process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID ?? "current";
+
+function resolveWorkspaceId(workspaceId?: string) {
+  if (workspaceId) {
+    return workspaceId;
+  }
+  const activeId = getActiveWorkspaceId();
+  if (activeId) {
+    return activeId;
+  }
+  return DEFAULT_WORKSPACE_ID;
+}
 
 interface ProjectListResponse {
   data?: DemoProject[];
@@ -83,10 +94,6 @@ type RawProjectListResponse = ProjectListResponse | DemoProject[];
 type RawProjectResponse = ProjectResponse | DemoProject;
 type RawCollectionResponse<TItem> = CollectionResponse<TItem> | TItem[];
 type RawItemResponse<TItem> = ItemResponse<TItem> | TItem;
-
-function resolveWorkspaceId(workspaceId?: string) {
-  return workspaceId ?? getActiveWorkspaceId() ?? DEFAULT_WORKSPACE_ID;
-}
 
 function normalizeProjectListResponse(response: RawProjectListResponse): ProjectListResponse {
   if (Array.isArray(response)) {
@@ -207,6 +214,18 @@ function normalizeCalendarItem(item: BackendCalendarItem) {
     endsAt: item.ends_at ?? undefined,
     source: item.source ?? undefined
   };
+}
+
+function normalizeSprintTaskStatus(status?: string | null): SprintTask["status"] {
+  switch ((status ?? "").toLowerCase()) {
+    case "done":
+      return "Done";
+    case "in progress":
+    case "in_progress":
+      return "In Progress";
+    default:
+      return "To Do";
+  }
 }
 
 export const projectApi = {
@@ -549,5 +568,445 @@ export const projectApi = {
         method: "DELETE"
       }
     );
+  },
+
+  // Customer Interviews
+  async listInterviews(projectId: string, workspaceId?: string) {
+    const response = await requestJson<RawCollectionResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/interviews`
+    );
+    return normalizeCollectionResponse(response).data ?? [];
+  },
+
+  async createInterview(
+    projectId: string,
+    payload: {
+      interview_type?: string;
+      contact_name: string;
+      contact_role?: string;
+      contact_company?: string;
+      contact_email?: string;
+      contact_linkedin?: string;
+      contact_phone?: string;
+      research_objectives?: string;
+      hypotheses?: string;
+      scheduled_at?: string;
+      icp_company_size?: string;
+      icp_industry?: string;
+      icp_role_level?: string;
+    },
+    workspaceId?: string
+  ) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/interviews`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async updateInterview(
+    projectId: string,
+    interviewId: string,
+    payload: Partial<{
+      status: string;
+      contact_name: string;
+      contact_role: string;
+      contact_company: string;
+      contact_email: string;
+      research_objectives: string;
+      hypotheses: string;
+      scheduled_at: string;
+      completed_at: string;
+      duration_minutes: number;
+      recording_url: string;
+      transcription: string;
+      consent_given: boolean;
+      result_signal: string;
+      willingness_score: number;
+      key_evidence: string;
+      next_steps: string;
+      notes: string;
+    }>,
+    workspaceId?: string
+  ) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/interviews/${interviewId}`,
+      { method: "PATCH", body: JSON.stringify(payload) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async deleteInterview(projectId: string, interviewId: string, workspaceId?: string) {
+    return requestJson(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/interviews/${interviewId}`,
+      { method: "DELETE" }
+    );
+  },
+
+  async addInterviewTheme(
+    projectId: string,
+    interviewId: string,
+    payload: { theme_type: string; description: string; severity?: string; quote?: string },
+    workspaceId?: string
+  ) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/interviews/${interviewId}/themes`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async addInterviewJobStory(
+    projectId: string,
+    interviewId: string,
+    payload: { situation: string; motivation: string; expected_outcome: string; context?: string },
+    workspaceId?: string
+  ) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/interviews/${interviewId}/job-stories`,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async getBMC(projectId: string, workspaceId?: string) {
+    const response = await requestJson<Record<string, unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/bmc`
+    );
+    return response;
+  },
+
+  async saveBMC(projectId: string, data: Record<string, { id: string; title: string; description?: string }[]>, workspaceId?: string) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/bmc`,
+      { method: "POST", body: JSON.stringify(data) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async getGTM(projectId: string, workspaceId?: string) {
+    const response = await requestJson<Record<string, unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/gtm`
+    );
+    return response;
+  },
+
+  async saveGTM(projectId: string, data: Record<string, { id: string; content: string }[]>, workspaceId?: string) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/gtm`,
+      { method: "POST", body: JSON.stringify(data) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async getMarketSizing(projectId: string, workspaceId?: string) {
+    const response = await requestJson<Record<string, unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/market-sizing`
+    );
+    return response;
+  },
+
+  async saveMarketSizing(projectId: string, data: Record<string, unknown>, workspaceId?: string) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/market-sizing`,
+      { method: "POST", body: JSON.stringify(data) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async getICP(projectId: string, workspaceId?: string) {
+    const response = await requestJson<Record<string, unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/icp`
+    );
+    return response;
+  },
+
+  async saveICP(projectId: string, data: Record<string, unknown>, workspaceId?: string) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/icp`,
+      { method: "POST", body: JSON.stringify(data) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async getProblemValidation(projectId: string, workspaceId?: string) {
+    const response = await requestJson<Record<string, unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/problem-validation`
+    );
+    return response;
+  },
+
+  async saveProblemValidation(projectId: string, data: Record<string, unknown>, workspaceId?: string) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/problem-validation`,
+      { method: "POST", body: JSON.stringify(data) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async getWorkshop(projectId: string, workspaceId?: string) {
+    const response = await requestJson<Record<string, unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/workshop`
+    );
+    return response;
+  },
+
+  async saveWorkshop(projectId: string, data: Record<string, unknown>, workspaceId?: string) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/workshop`,
+      { method: "POST", body: JSON.stringify(data) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  async getProblemWorkspace(projectId: string, workspaceId?: string) {
+    const response = await requestJson<Record<string, unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/problem`
+    );
+    return response;
+  },
+
+  async saveProblemWorkspace(projectId: string, data: Record<string, unknown>, workspaceId?: string) {
+    const response = await requestJson<RawItemResponse<unknown>>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/problem`,
+      { method: "POST", body: JSON.stringify(data) }
+    );
+    return normalizeItemResponse(response).data;
+  },
+
+  // User Journey Map
+  async getJourney(projectId: string, workspaceId?: string) {
+    const response = await requestJson<{ current: any[]; improved: any[] }>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/journey`
+    );
+    return response;
+  },
+
+  async saveJourney(projectId: string, data: { current: any[]; improved: any[] }, workspaceId?: string) {
+    const response = await requestJson<{ success: boolean }>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/journey`,
+      { method: "POST", body: JSON.stringify(data) }
+    );
+    return response;
+  },
+
+  // Gamma Presentations
+  async listGammaPresentations(projectId: string, workspaceId?: string) {
+    const response = await requestJson<GammaPresentation[]>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/gamma`
+    );
+    return response;
+  },
+
+  async generateGammaPresentation(
+    projectId: string,
+    content: string,
+    options?: {
+      title?: string;
+      format?: 'presentation' | 'document' | 'webpage';
+      numCards?: number;
+      workspaceId?: string;
+    }
+  ) {
+    const response = await requestJson<{ success: boolean; generationId: string }>(
+      `/api/workspaces/${resolveWorkspaceId(options?.workspaceId)}/projects/${projectId}/gamma/generate`,
+      { method: "POST", body: JSON.stringify({ content, ...options }) }
+    );
+    return response;
+  },
+
+  async generateFromTemplate(
+    projectId: string,
+    templateId: string,
+    content: string,
+    options?: { title?: string; workspaceId?: string }
+  ) {
+    const response = await requestJson<{ success: boolean; generationId: string }>(
+      `/api/workspaces/${resolveWorkspaceId(options?.workspaceId)}/projects/${projectId}/gamma/from-template`,
+      { method: "POST", body: JSON.stringify({ templateId, content, ...options }) }
+    );
+    return response;
+  },
+
+  async getGammaStatus(projectId: string, generationId: string, workspaceId?: string) {
+    const response = await requestJson<{
+      success: boolean;
+      status: string;
+      gammaUrl?: string;
+      exportUrl?: string;
+    }>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/gamma/${generationId}`
+    );
+    return response;
+  },
+
+  async getGammaTemplates(projectId: string, workspaceId?: string) {
+    const response = await requestJson<{ templates: GammaTemplate[] }>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/gamma/templates`
+    );
+    return response.templates;
+  },
+
+  async deleteGammaPresentation(projectId: string, id: string, workspaceId?: string) {
+    const response = await requestJson<{ success: boolean }>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/gamma/${id}`,
+      { method: "DELETE" }
+    );
+    return response;
+  },
+
+  // Sprints
+  async getProjectSprint(projectId: string, workspaceId?: string) {
+    const response = await requestJson<
+      | {
+          data?: Array<{
+            id: number | string;
+            goal: string;
+            duration?: string;
+            review?: string;
+            retrospective?: string;
+            tasks?: SprintTask[];
+          }>;
+        }
+      | Array<{
+          id: number | string;
+          goal: string;
+          duration?: string;
+          review?: string;
+          retrospective?: string;
+          tasks?: SprintTask[];
+        }>
+    >(`/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/sprints`);
+
+    const firstSprint = Array.isArray(response) ? response[0] : response.data?.[0];
+
+    if (firstSprint) {
+      return {
+        id: String(firstSprint.id),
+        goal: firstSprint.goal,
+        duration: firstSprint.duration ?? "7 days",
+        review: firstSprint.review || "",
+        retrospective: firstSprint.retrospective || "",
+        tasks: (firstSprint.tasks ?? []).map((task) => ({
+          ...task,
+          id: String(task.id),
+          status: normalizeSprintTaskStatus(task.status)
+        }))
+      };
+    }
+    return null;
+  },
+
+  async createSprint(projectId: string, data: { goal?: string; duration?: string; review?: string; retrospective?: string; status?: string }, workspaceId?: string) {
+    const response = await requestJson<{ data?: { id: number | string } } | { id: number | string }>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/sprints`,
+      { method: "POST", body: JSON.stringify(data) }
+    );
+    return response;
+  },
+
+  async updateSprintById(projectId: string, sprintId: string, data: { goal?: string; duration?: string; review?: string; retrospective?: string; status?: string }, workspaceId?: string) {
+    const response = await requestJson<{ data?: { id: number | string } } | { id: number | string }>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/sprints/${sprintId}`,
+      { method: "PATCH", body: JSON.stringify(data) }
+    );
+    return response;
+  },
+
+  async createSprintTask(projectId: string, data: { 
+    title: string; 
+    description?: string;
+    status: string;
+    starts_at?: string;
+    ends_at?: string;
+    sprint_id: number | string;
+  }, workspaceId?: string) {
+    const sprintId = String(data.sprint_id);
+    const response = await requestJson<{ data?: SprintTask } | SprintTask>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/sprints/${sprintId}/tasks`,
+      { method: "POST", body: JSON.stringify({ 
+        title: data.title,
+        description: data.description,
+        status: data.status,
+        starts_at: data.starts_at,
+        ends_at: data.ends_at
+      }) }
+    );
+    return response;
+  },
+
+  async updateSprintTask(projectId: string, taskId: string, data: { 
+    sprintId: number | string;
+    status?: string; 
+    title?: string;
+    description?: string;
+    starts_at?: string;
+    ends_at?: string;
+  }, workspaceId?: string) {
+    const response = await requestJson<{ data?: SprintTask } | SprintTask>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/sprints/${data.sprintId}/tasks/${taskId}`,
+      { method: "PATCH", body: JSON.stringify(data) }
+    );
+    return response;
+  },
+
+  async deleteSprintTask(projectId: string, sprintId: string, taskId: string, workspaceId?: string) {
+    const response = await requestJson<{ success: boolean }>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/sprints/${sprintId}/tasks/${taskId}`,
+      { method: "DELETE" }
+    );
+    return response;
+  },
+
+  async getSprintTeamMembers(projectId: string, sprintId: string, workspaceId?: string) {
+    const response = await requestJson<any[]>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/sprints/${sprintId}/team`,
+      { method: "GET" }
+    );
+    return response;
+  },
+
+  async addSprintTeamMember(projectId: string, sprintId: string, userId: number, role: string, workspaceId?: string) {
+    const response = await requestJson<any>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/sprints/${sprintId}/team`,
+      {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId, role })
+      }
+    );
+    return response;
+  },
+
+  async removeSprintTeamMember(projectId: string, sprintId: string, teamMemberId: string, workspaceId?: string) {
+    const response = await requestJson<{ success: boolean }>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/projects/${projectId}/sprints/${sprintId}/team/${teamMemberId}`,
+      { method: "DELETE" }
+    );
+    return response;
+  },
+
+  async getWorkspaceMembers(workspaceId?: string) {
+    const response = await requestJson<any[]>(
+      `/api/workspaces/${resolveWorkspaceId(workspaceId)}/members`,
+      { method: "GET" }
+    );
+    return response;
   }
 };
+
+export interface GammaPresentation {
+  id: string;
+  generationId?: string;
+  title: string;
+  status: string;
+  gammaUrl?: string;
+  exportUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GammaTemplate {
+  id: string;
+  name: string;
+  description: string;
+}

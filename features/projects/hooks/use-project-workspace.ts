@@ -144,7 +144,26 @@ export function ProjectWorkspaceProvider({ children }: { children: ReactNode }) 
     [snapshot]
   );
 
-  const createProject = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.createProject);
+  const createProject = useCallback(
+    async (name: string, seed?: CreateProjectPayload) => {
+      setIsMutating(true);
+      setError(null);
+
+      try {
+        const nextSnapshot = await projectService.createProject(snapshot, name, seed);
+        setSnapshot(nextSnapshot);
+        return nextSnapshot;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unable to create project.";
+        setError(message);
+        throw error;
+      } finally {
+        setIsMutating(false);
+      }
+    },
+    [setError, setIsMutating, setSnapshot, snapshot]
+  );
+
   const renameProject = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.renameProject);
   const deleteProject = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.deleteProject);
   const updateFounderNote = useProjectMutation(setSnapshot, setError, setIsMutating, snapshot, projectService.updateFounderNote);

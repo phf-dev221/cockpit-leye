@@ -3,9 +3,9 @@ import { ProjectCalendarPage } from "@/features/projects/components/project-cale
 export default async function CalendarPage({
   params
 }: {
-  params: Promise<{ projectId: string }>;
+  params: Promise<{ projectUuid: string }>;
 }) {
-  const { projectId } = await params;
+  const { projectUuid } = await params;
 
-  return <ProjectCalendarPage projectId={projectId} />;
+  return <ProjectCalendarPage projectId={projectUuid} />;
 }

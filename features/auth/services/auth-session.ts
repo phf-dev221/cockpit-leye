@@ -11,6 +11,7 @@ export interface AuthSessionUser {
   avatar_url?: string | null;
   timezone?: string | null;
   locale?: string | null;
+  can_create_workspace?: boolean;
 }
 
 export interface AuthSessionWorkspace {
@@ -20,7 +21,7 @@ export interface AuthSessionWorkspace {
 }
 
 export interface AuthSession {
-  token: string;
+  token?: string | null;
   user: AuthSessionUser | null;
   active_workspace: AuthSessionWorkspace | null;
 }
@@ -66,8 +67,13 @@ export function setAuthSession(session: AuthSession) {
     return;
   }
 
-  window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
-  writeFrontAuthCookie(true);
+  const sanitizedSession: AuthSession = {
+    ...session,
+    token: null,
+  };
+
+  window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(sanitizedSession));
+  writeFrontAuthCookie(Boolean(sanitizedSession.user));
 }
 
 export function clearAuthSession() {
@@ -109,11 +115,11 @@ export function updateAuthSessionUser(user: AuthSessionUser) {
 }
 
 export function getAuthToken() {
-  return getAuthSession()?.token ?? null;
+  return null;
 }
 
 export function hasAuthSession() {
-  return Boolean(getAuthSession()?.token);
+  return Boolean(getAuthSession()?.user);
 }
 
 export function getActiveWorkspaceId() {
